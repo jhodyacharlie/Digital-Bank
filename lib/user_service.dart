@@ -105,4 +105,8 @@ class UserService {
       'resetExpired': FieldValue.delete(),
     });
   }
+
+  Future<void> simpanFoto(String userId, String fotoBase64) async {
+    await users.doc(userId).update({'foto': fotoBase64});
+  }
 }

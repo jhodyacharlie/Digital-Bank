@@ -1,7 +1,12 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'app_style.dart';
 import 'login_screen.dart';
+import 'user_service.dart';
 
 class FiturMenu {
   const FiturMenu(this.nama, this.ikon);
@@ -28,7 +33,20 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final UserService userService = UserService();
+  final ImagePicker picker = ImagePicker();
+
   bool saldoTerlihat = false;
+  Uint8List? fotoBytes;
+
+  @override
+  void initState() {
+    super.initState();
+    final data = widget.user['foto'];
+    if (data != null) {
+      fotoBytes = base64Decode(data);
+    }
+  }
 
   static const daftarMenu = [
     FiturMenu('Info', Icons.account_balance_wallet_outlined),
@@ -49,9 +67,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String formatRupiah(int angka) {
     final teks = angka.abs().toString().replaceAllMapped(
-          RegExp(r'\B(?=(\d{3})+(?!\d))'),
-          (m) => '.',
-        );
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (m) => '.',
+    );
     return 'Rp $teks';
   }
 
@@ -79,6 +97,108 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (route) => false,
+    );
+  }
+
+  void pesan(String teks) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(teks)));
+  }
+
+  Future<void> pilihFoto(ImageSource sumber) async {
+    try {
+      final file = await picker.pickImage(
+        source: sumber,
+        maxWidth: 400,
+        maxHeight: 400,
+        imageQuality: 70,
+      );
+      if (file == null) return;
+
+      final namaFile = file.name.toLowerCase();
+      final gambar = ['.jpg', '.jpeg', '.png', '.webp'].any(namaFile.endsWith);
+      if (!gambar) {
+        pesan('File harus berupa gambar');
+        return;
+      }
+
+      final bytes = await file.readAsBytes();
+      await userService.simpanFoto(widget.user['id'], base64Encode(bytes));
+      if (!mounted) return;
+      setState(() => fotoBytes = bytes);
+    } catch (e) {
+      pesan('Gagal menyimpan foto profil');
+    }
+  }
+
+  void tampilPilihanFoto() {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Pilih dari galeri'),
+              onTap: () {
+                Navigator.pop(ctx);
+                pilihFoto(ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Ambil foto'),
+              onTap: () {
+                Navigator.pop(ctx);
+                pilihFoto(ImageSource.camera);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget avatar(String nama) {
+    return GestureDetector(
+      onTap: tampilPilihanFoto,
+      child: Stack(
+        children: [
+          CircleAvatar(
+            radius: 24,
+            backgroundColor: Colors.white,
+            backgroundImage: fotoBytes != null ? MemoryImage(fotoBytes!) : null,
+            child: fotoBytes == null
+                ? Text(
+                    nama.substring(0, 1),
+                    style: const TextStyle(
+                      color: AppColors.biru,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  )
+                : null,
+          ),
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: AppColors.biru,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 1),
+              ),
+              child: const Icon(
+                Icons.camera_alt,
+                size: 10,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -155,16 +275,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Row(
             children: [
-              CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Text(
-                  nama.substring(0, 1),
-                  style: const TextStyle(
-                    color: AppColors.biru,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+              avatar(nama),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
