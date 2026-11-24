@@ -5,9 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
 
 class UserService {
-  final CollectionReference users = FirebaseFirestore.instance.collection(
-    'users',
-  );
+  final CollectionReference users =
+      FirebaseFirestore.instance.collection('users');
 
   String hashPin(String pin) {
     return sha256.convert(utf8.encode(pin)).toString();
@@ -108,5 +107,54 @@ class UserService {
 
   Future<void> simpanFoto(String userId, String fotoBase64) async {
     await users.doc(userId).update({'foto': fotoBase64});
+  }
+
+  Future<Map<String, dynamic>?> getUser(String id) async {
+    final doc = await users.doc(id).get();
+    if (!doc.exists) return null;
+    final data = doc.data() as Map<String, dynamic>;
+    data['id'] = doc.id;
+    return data;
+  }
+
+  Future<Map<String, dynamic>?> findByRekening(String rekening) async {
+    final hasil =
+        await users.where('rekening', isEqualTo: rekening).limit(1).get();
+    if (hasil.docs.isEmpty) return null;
+    final doc = hasil.docs.first;
+    final data = doc.data() as Map<String, dynamic>;
+    data['id'] = doc.id;
+    return data;
+  }
+
+  Future<String> ambilRekening(Map<String, dynamic> user) async {
+    final ada = user['rekening'];
+    if (ada != null) return ada as String;
+
+    final baru = (1000000000 + Random().nextInt(900000000)).toString();
+    await users.doc(user['id']).update({'rekening': baru});
+    user['rekening'] = baru;
+    return baru;
+  }
+
+  Future<String?> transfer(String dariId, String keId, int nominal) {
+    return FirebaseFirestore.instance.runTransaction<String?>((trx) async {
+      final dariRef = users.doc(dariId);
+      final keRef = users.doc(keId);
+
+      final dari = await trx.get(dariRef);
+      final ke = await trx.get(keRef);
+
+      final saldoDari =
+          ((dari.data() as Map<String, dynamic>)['saldo'] as num).toInt();
+      final saldoKe =
+          ((ke.data() as Map<String, dynamic>)['saldo'] as num).toInt();
+
+      if (saldoDari < nominal) return 'Saldo tidak cukup';
+
+      trx.update(dariRef, {'saldo': saldoDari - nominal});
+      trx.update(keRef, {'saldo': saldoKe + nominal});
+      return null;
+    });
   }
 }

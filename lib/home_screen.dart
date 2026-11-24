@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'app_style.dart';
 import 'login_screen.dart';
+import 'qris_screen.dart';
 import 'user_service.dart';
 
 class FiturMenu {
@@ -36,13 +37,15 @@ class _HomeScreenState extends State<HomeScreen> {
   final UserService userService = UserService();
   final ImagePicker picker = ImagePicker();
 
+  late Map<String, dynamic> user;
   bool saldoTerlihat = false;
   Uint8List? fotoBytes;
 
   @override
   void initState() {
     super.initState();
-    final data = widget.user['foto'];
+    user = Map<String, dynamic>.from(widget.user);
+    final data = user['foto'];
     if (data != null) {
       fotoBytes = base64Decode(data);
     }
@@ -67,9 +70,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String formatRupiah(int angka) {
     final teks = angka.abs().toString().replaceAllMapped(
-      RegExp(r'\B(?=(\d{3})+(?!\d))'),
-      (m) => '.',
-    );
+          RegExp(r'\B(?=(\d{3})+(?!\d))'),
+          (m) => '.',
+        );
     return 'Rp $teks';
   }
 
@@ -123,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       final bytes = await file.readAsBytes();
-      await userService.simpanFoto(widget.user['id'], base64Encode(bytes));
+      await userService.simpanFoto(user['id'], base64Encode(bytes));
       if (!mounted) return;
       setState(() => fotoBytes = bytes);
     } catch (e) {
@@ -190,16 +193,27 @@ class _HomeScreenState extends State<HomeScreen> {
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 1),
               ),
-              child: const Icon(
-                Icons.camera_alt,
-                size: 10,
-                color: Colors.white,
-              ),
+              child: const Icon(Icons.camera_alt, size: 10, color: Colors.white),
             ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> bukaQris() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => QrisScreen(user: user)),
+    );
+
+    try {
+      final terbaru = await userService.getUser(user['id']);
+      if (!mounted || terbaru == null) return;
+      setState(() => user = terbaru);
+    } catch (e) {
+      debugPrint('Gagal memuat ulang data: $e');
+    }
   }
 
   Widget kartuPutih(Widget isi) {
@@ -310,24 +324,27 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget itemMenu(FiturMenu menu) {
-    return Column(
-      children: [
-        Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: AppColors.biruMuda,
-            borderRadius: BorderRadius.circular(16),
+    return GestureDetector(
+      onTap: menu.nama == 'QRIS' ? bukaQris : null,
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: AppColors.biruMuda,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(menu.ikon, color: AppColors.biru, size: 28),
           ),
-          child: Icon(menu.ikon, color: AppColors.biru, size: 28),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          menu.nama,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 12, color: AppColors.biruTua),
-        ),
-      ],
+          const SizedBox(height: 8),
+          Text(
+            menu.nama,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 12, color: AppColors.biruTua),
+          ),
+        ],
+      ),
     );
   }
 
@@ -448,15 +465,23 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget itemBawah(IconData ikon, String teks, bool aktif) {
+  Widget itemBawah(
+    IconData ikon,
+    String teks,
+    bool aktif, {
+    VoidCallback? onTap,
+  }) {
     final warna = aktif ? AppColors.biru : AppColors.abu;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(ikon, color: warna),
-        const SizedBox(height: 4),
-        Text(teks, style: TextStyle(fontSize: 11, color: warna)),
-      ],
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(ikon, color: warna),
+          const SizedBox(height: 4),
+          Text(teks, style: TextStyle(fontSize: 11, color: warna)),
+        ],
+      ),
     );
   }
 
@@ -474,7 +499,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             itemBawah(Icons.home_filled, 'Beranda', true),
             itemBawah(Icons.local_offer_outlined, 'Promo', false),
-            itemBawah(Icons.qr_code_2, 'QRIS', false),
+            itemBawah(Icons.qr_code_2, 'QRIS', false, onTap: bukaQris),
             itemBawah(Icons.mail_outline, 'Inbox', false),
             itemBawah(Icons.person_outline, 'Profil', false),
           ],
@@ -485,8 +510,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final nama = widget.user['nama'] as String;
-    final saldo = (widget.user['saldo'] as num).toInt();
+    final nama = user['nama'] as String;
+    final saldo = (user['saldo'] as num).toInt();
 
     return PopScope(
       canPop: false,
