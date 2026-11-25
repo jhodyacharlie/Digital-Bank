@@ -6,6 +6,8 @@ import 'package:image_picker/image_picker.dart';
 
 import 'app_style.dart';
 import 'login_screen.dart';
+import 'mutasi_page.dart';
+import 'transfer_page.dart';
 import 'profile_screen.dart';
 import 'qris_screen.dart';
 import 'user_service.dart';
@@ -232,6 +234,26 @@ class _HomeScreenState extends State<HomeScreen> {
     await muatUlang();
   }
 
+  Future<void> bukaMutasi() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MutasiPage(userId: user['id'] as String),
+      ),
+    );
+    await muatUlang();
+  }
+
+  Future<void> bukaTransfer() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TransferPage(userId: user['id'] as String),
+      ),
+    );
+    await muatUlang();
+  }
+
   Widget kartuPutih(Widget isi) {
     return Container(
       width: double.infinity,
@@ -341,7 +363,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget itemMenu(FiturMenu menu) {
     return GestureDetector(
-      onTap: menu.nama == 'QRIS' ? bukaQris : null,
+      onTap: switch (menu.nama) {
+        'Info' => bukaMutasi,
+        'Transfer' => bukaTransfer,
+        'QRIS' => bukaQris,
+        _ => null,
+      },
       child: Column(
         children: [
           Container(
