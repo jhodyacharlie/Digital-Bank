@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'firebase_options.dart';
 import 'transfer_page.dart';
 
+import 'mutasi_page.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -20,7 +22,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'MyBCA',
       debugShowCheckedModeBanner: false,
-      home: const TransferPage(userId: 'andi'),
+      home: const MutasiPage(userId: 'andi'),
     );
   }
 }
