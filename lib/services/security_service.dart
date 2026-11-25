@@ -25,6 +25,7 @@ class SecurityService {
         'pin': _hashPIN(pin),
         // OTP di aplikasi ini hanya simulasi lokal, bukan verifikasi email/HP.
         'otpDemoCompleted': true,
+        'isVerified': false,
         'registrationCompleted': true,
         'accountStatus': 'active',
         'updatedAt': FieldValue.serverTimestamp(),

@@ -54,25 +54,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
       lastDate: sekarang,
       helpText: 'Pilih tanggal lahir',
     );
-    if (hasil != null) setState(() => tanggalLahir = hasil);
+
+    if (hasil != null) {
+      setState(() => tanggalLahir = hasil);
+    }
   }
 
   String tanggalFormat(DateTime? tanggal) {
     if (tanggal == null) return 'Pilih tanggal lahir';
+
     return '${tanggal.day.toString().padLeft(2, '0')}/'
         '${tanggal.month.toString().padLeft(2, '0')}/${tanggal.year}';
   }
 
   Future<void> daftar() async {
     if (!formKey.currentState!.validate()) return;
+
     if (tanggalLahir == null) {
       pesan('Silakan pilih tanggal lahir');
       return;
     }
+
     if (gender == null) {
       pesan('Silakan pilih gender');
       return;
     }
+
     if (!setujuSyarat) {
       pesan('Silakan setujui syarat dan ketentuan');
       return;
@@ -80,8 +87,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     FocusScope.of(context).unfocus();
     setState(() => loading = true);
+
     try {
-      final pengguna = await userService.register(
+      final dataUser = await userService.register(
         namaDepan: namaDepanController.text,
         namaBelakang: namaBelakangController.text,
         email: emailController.text,
@@ -91,14 +99,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
         alamat: alamatController.text,
         kewarganegaraan: nationalityController.text,
       );
+
       if (!mounted) return;
+      final userId = dataUser['id'] as String?;
+      final email = dataUser['email'] as String?;
+
+      if (userId == null || email == null) {
+        pesan('Data akun tidak lengkap.');
+        return;
+      }
+
       await Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => OTPView(
-            email: pengguna['email'] as String,
-            userId: pengguna['id'] as String,
-          ),
+          builder: (_) => OTPView(email: email, userId: userId),
         ),
       );
     } on RegisterException catch (e) {
@@ -110,7 +124,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       debugPrint('Registration error: $e');
       pesan('Pendaftaran gagal. Periksa koneksi dan konfigurasi Firebase.');
     } finally {
-      if (mounted) setState(() => loading = false);
+      if (mounted) {
+        setState(() => loading = false);
+      }
     }
   }
 
@@ -125,7 +141,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: const Color(0xFFDDE3EA)),
+        borderSide: const BorderSide(color: Color(0xFFDDE3EA)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
@@ -332,11 +348,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         tipe: TextInputType.emailAddress,
                         validator: (v) {
                           final value = (v ?? '').trim();
-                          if (value.isEmpty) return 'Email wajib diisi';
+
+                          if (value.isEmpty) {
+                            return 'Email wajib diisi';
+                          }
+
                           if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
                               .hasMatch(value)) {
                             return 'Format email tidak valid';
                           }
+
                           return null;
                         },
                       ),
@@ -349,9 +370,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         formatters: [FilteringTextInputFormatter.digitsOnly],
                         validator: (v) {
                           final phone = UserService.normalisasiPhone(v ?? '');
+
                           if (!RegExp(r'^08\d{8,11}$').hasMatch(phone)) {
                             return 'Masukkan nomor HP Indonesia yang valid';
                           }
+
                           return null;
                         },
                       ),
@@ -396,6 +419,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ],
                   ),
                 ),
+
                 const SizedBox(height: 8),
                 SizedBox(
                   height: 54,
