@@ -1,8 +1,1 @@
-{
-  "firestore": {
-    "database": "(default)",
-    "location": "asia-southeast2",
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  }
-}
+{"firestore":{"database":"(default)","location":"asia-southeast2","rules":"firestore.rules","indexes":"firestore.indexes.json"},"flutter":{"platforms":{"android":{"default":{"projectId":"digitalbanking-b3e46","appId":"1:1086662136171:android:1a2278dd44595fee30bc2e","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"digitalbanking-b3e46","configurations":{"android":"1:1086662136171:android:1a2278dd44595fee30bc2e","ios":"1:1086662136171:ios:7aee283732dcd79f30bc2e","macos":"1:1086662136171:ios:7aee283732dcd79f30bc2e","web":"1:1086662136171:web:78449c9b178a962e30bc2e","windows":"1:1086662136171:web:cf45d41bb2200d9d30bc2e"}}}}}}
