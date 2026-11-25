@@ -28,66 +28,99 @@ class NotificationView extends StatelessWidget {
           ),
         ],
       ),
-      body: list.isEmpty
-          ? const Center(child: Text('Belum ada notifikasi'))
-          : ListView.separated(
-              itemCount: list.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (context, i) {
-                final n = list[i];
-                return Dismissible(
-                  key: ValueKey(n.id),
-                  direction: DismissDirection.endToStart,
-                  background: Container(
-                    color: Colors.red,
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: 20),
-                    child: const Icon(Icons.delete, color: Colors.white),
+      body: c.loading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                if (c.error != null)
+                  Container(
+                    width: double.infinity,
+                    color: Colors.red.withValues(alpha: 0.12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    child: Text(
+                      c.error!,
+                      style: const TextStyle(color: Colors.red, fontSize: 12),
+                    ),
                   ),
-                  onDismissed: (_) {
-                    c.delete(n.id);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Notifikasi dihapus')),
-                    );
-                  },
-                  child: ListTile(
-                    tileColor: n.isRead ? null : Colors.blue.withOpacity(0.07),
-                    leading: CircleAvatar(
-                      backgroundColor: _warna(n.type).withOpacity(0.15),
-                      child: Icon(_ikon(n.type), color: _warna(n.type)),
-                    ),
-                    title: Text(
-                      n.title,
-                      style: TextStyle(
-                        fontWeight: n.isRead
-                            ? FontWeight.normal
-                            : FontWeight.bold,
-                      ),
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(n.message),
-                        const SizedBox(height: 4),
-                        Text(
-                          DateFormat('dd MMM yyyy, HH:mm').format(n.date),
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey,
-                          ),
+                Expanded(
+                  child: list.isEmpty
+                      ? const Center(child: Text('Belum ada notifikasi'))
+                      : ListView.separated(
+                          itemCount: list.length,
+                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          itemBuilder: (context, i) {
+                            final n = list[i];
+                            return Dismissible(
+                              key: ValueKey(n.id),
+                              direction: DismissDirection.endToStart,
+                              background: Container(
+                                color: Colors.red,
+                                alignment: Alignment.centerRight,
+                                padding: const EdgeInsets.only(right: 20),
+                                child: const Icon(
+                                  Icons.delete,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              onDismissed: (_) {
+                                c.delete(n.id);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Notifikasi dihapus'),
+                                  ),
+                                );
+                              },
+                              child: ListTile(
+                                tileColor: n.isRead
+                                    ? null
+                                    : Colors.blue.withValues(alpha: 0.07),
+                                leading: CircleAvatar(
+                                  backgroundColor:
+                                      _warna(n.type).withValues(alpha: 0.15),
+                                  child: Icon(
+                                    _ikon(n.type),
+                                    color: _warna(n.type),
+                                  ),
+                                ),
+                                title: Text(
+                                  n.title,
+                                  style: TextStyle(
+                                    fontWeight: n.isRead
+                                        ? FontWeight.normal
+                                        : FontWeight.bold,
+                                  ),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(n.message),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      DateFormat('dd MMM yyyy, HH:mm')
+                                          .format(n.date),
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                trailing: n.isRead
+                                    ? null
+                                    : const CircleAvatar(
+                                        radius: 5,
+                                        backgroundColor: Colors.blue,
+                                      ),
+                                onTap: () => c.markAsRead(n.id),
+                              ),
+                            );
+                          },
                         ),
-                      ],
-                    ),
-                    trailing: n.isRead
-                        ? null
-                        : const CircleAvatar(
-                            radius: 5,
-                            backgroundColor: Colors.blue,
-                          ),
-                    onTap: () => c.markAsRead(n.id),
-                  ),
-                );
-              },
+                ),
+              ],
             ),
     );
   }

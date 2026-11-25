@@ -8,10 +8,11 @@ class SettingModel {
   final bool pinEnabled;
   final bool accountProtection;
 
+  // Nama/ID/email diisi dari Firestore (users/{userId}) saat load().
   const SettingModel({
-    this.name = 'Bunga Apriyanti',
-    this.userId = 'bunga123',
-    this.email = 'bunga@email.com',
+    this.name = 'Memuat...',
+    this.userId = '',
+    this.email = '',
     this.isDarkMode = false,
     this.language = 'Bahasa Indonesia',
     this.biometricEnabled = false,

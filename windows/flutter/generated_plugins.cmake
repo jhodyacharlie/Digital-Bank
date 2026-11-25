@@ -3,6 +3,8 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  firebase_core
+  cloud_firestore
   local_auth_windows
 )
 

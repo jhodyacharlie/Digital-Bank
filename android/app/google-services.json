@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1086662136171",
+    "project_id": "digitalbanking-b3e46",
+    "storage_bucket": "digitalbanking-b3e46.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1086662136171:android:1a2278dd44595fee30bc2e",
+        "android_client_info": {
+          "package_name": "com.example.digital_banking"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD7uLbERefwYV5HGjqMWutGdypzDL3VG-0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -77,6 +77,18 @@ class SettingView extends StatelessWidget {
             ),
           ),
 
+          // ===== Gagal memuat data akun dari Firebase =====
+          if (c.loadError != null)
+            Container(
+              width: double.infinity,
+              color: Colors.red.withValues(alpha: 0.12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(
+                c.loadError!,
+                style: const TextStyle(color: Colors.red, fontSize: 12),
+              ),
+            ),
+
           // ===== Kartu profil =====
           ListTile(
             contentPadding: const EdgeInsets.symmetric(
