@@ -11,9 +11,18 @@ import 'login_screen.dart';
 import 'user_service.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key, required this.user});
+  const ProfileScreen({
+    super.key,
+    required this.user,
+    this.onOpenSettings,
+    this.onOpenNotifications,
+    this.onOpenAccountSettings,
+  });
 
   final Map<String, dynamic> user;
+  final VoidCallback? onOpenSettings;
+  final VoidCallback? onOpenNotifications;
+  final VoidCallback? onOpenAccountSettings;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -192,7 +201,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               pil('ID: ${user['id']}', Colors.white24),
               const SizedBox(width: 8),
-              pil('Verified', Colors.green.shade600, ikon: Icons.verified),
+              pil(
+                user['isVerified'] == true ? 'Verified' : 'OTP Demo',
+                user['isVerified'] == true
+                    ? Colors.green.shade600
+                    : Colors.orange.shade700,
+                ikon: user['isVerified'] == true
+                    ? Icons.verified
+                    : Icons.info_outline,
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -321,7 +338,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget bagianKeamanan() {
     return kartu('Security & Privacy', [
-      barisMenu(Icons.lock_outline, 'Change Password'),
+      barisMenu(
+        Icons.lock_outline,
+        'Change Password',
+        onTap: widget.onOpenAccountSettings,
+      ),
       barisMenu(Icons.pin_outlined, 'Change PIN', onTap: gantiPin),
       barisMenu(
         Icons.fingerprint,
@@ -340,9 +361,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget bagianPengaturan() {
     return kartu('Other Settings', [
-      barisMenu(Icons.notifications_outlined, 'Notification Preferences'),
-      barisMenu(Icons.language, 'Language', teks: 'Bahasa Indonesia'),
-      barisMenu(Icons.brightness_6_outlined, 'Dark Mode / Light Mode', teks: 'Light'),
+      barisMenu(
+        Icons.notifications_outlined,
+        'Notification Preferences',
+        onTap: widget.onOpenNotifications,
+      ),
+      barisMenu(
+        Icons.language,
+        'Language',
+        teks: 'Bahasa Indonesia',
+        onTap: widget.onOpenSettings,
+      ),
+      barisMenu(
+        Icons.brightness_6_outlined,
+        'Dark Mode / Light Mode',
+        teks: 'Light',
+        onTap: widget.onOpenSettings,
+      ),
       barisMenu(Icons.privacy_tip_outlined, 'Privacy Policy'),
       barisMenu(Icons.description_outlined, 'Terms & Conditions'),
       barisMenu(Icons.help_outline, 'Help Center'),

@@ -19,11 +19,7 @@ const List<String> kBankList = [
 ];
 
 class TransferPage extends StatefulWidget {
-  const TransferPage({
-    super.key,
-    required this.userId,
-    this.onSelectAccount,
-  });
+  const TransferPage({super.key, required this.userId, this.onSelectAccount});
 
   /// ID dokumen user di koleksi `users` (contoh: "andi").
   final String userId;
@@ -71,11 +67,13 @@ class _TransferPageState extends State<TransferPage> {
   void _snack(String msg, {bool error = false}) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: Text(msg),
-        backgroundColor: error ? AppColors.danger : AppColors.success,
-        behavior: SnackBarBehavior.floating,
-      ));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          backgroundColor: error ? AppColors.danger : AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
   }
 
   Future<void> _openForm({SavedAccount? existing}) async {
@@ -119,18 +117,25 @@ class _TransferPageState extends State<TransferPage> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.background,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Hapus Referensi?',
-            style: TextStyle(color: AppColors.textDark)),
-        content: Text('${a.displayName} (${a.bank} • ${a.noRekening}) '
-            'akan dihapus dari daftar transfer.'),
+        title: const Text(
+          'Hapus Referensi?',
+          style: TextStyle(color: AppColors.textDark),
+        ),
+        content: Text(
+          '${a.displayName} (${a.bank} • ${a.noRekening}) '
+          'akan dihapus dari daftar transfer.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Batal')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Hapus',
-                style: TextStyle(color: AppColors.danger)),
+            child: const Text(
+              'Hapus',
+              style: TextStyle(color: AppColors.danger),
+            ),
           ),
         ],
       ),
@@ -160,8 +165,10 @@ class _TransferPageState extends State<TransferPage> {
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Transfer',
-            style: TextStyle(fontWeight: FontWeight.w600)),
+        title: const Text(
+          'Transfer',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           onPressed: () => Navigator.maybePop(context),
@@ -179,13 +186,15 @@ class _TransferPageState extends State<TransferPage> {
               decoration: InputDecoration(
                 hintText: 'Cari nama atau nomor rekening',
                 hintStyle: const TextStyle(color: AppColors.textGrey),
-                prefixIcon:
-                    const Icon(Icons.search, color: AppColors.textGrey),
+                prefixIcon: const Icon(Icons.search, color: AppColors.textGrey),
                 suffixIcon: _query.isEmpty
                     ? null
                     : IconButton(
-                        icon: const Icon(Icons.close,
-                            color: AppColors.textGrey, size: 20),
+                        icon: const Icon(
+                          Icons.close,
+                          color: AppColors.textGrey,
+                          size: 20,
+                        ),
                         onPressed: () {
                           _searchCtrl.clear();
                           setState(() => _query = '');
@@ -209,7 +218,7 @@ class _TransferPageState extends State<TransferPage> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: _tabs.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
               itemBuilder: (_, i) {
                 final selected = _tab == i;
                 return ChoiceChip(
@@ -221,7 +230,8 @@ class _TransferPageState extends State<TransferPage> {
                   backgroundColor: AppColors.secondary,
                   side: BorderSide.none,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20)),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                   labelStyle: TextStyle(
                     color: selected ? Colors.white : AppColors.primary,
                     fontWeight: FontWeight.w600,
@@ -240,15 +250,17 @@ class _TransferPageState extends State<TransferPage> {
               child: ElevatedButton.icon(
                 onPressed: () => _openForm(),
                 icon: const Icon(Icons.add_rounded),
-                label: const Text('Tambah Referensi',
-                    style:
-                        TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                label: const Text(
+                  'Tambah Referensi',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),
@@ -268,8 +280,8 @@ class _TransferPageState extends State<TransferPage> {
                 }
                 if (snap.connectionState == ConnectionState.waiting) {
                   return const Center(
-                      child: CircularProgressIndicator(
-                          color: AppColors.primary));
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  );
                 }
                 final all = snap.data ?? [];
                 final list = _applyFilter(all);
@@ -277,8 +289,7 @@ class _TransferPageState extends State<TransferPage> {
                   return const _InfoState(
                     icon: Icons.account_balance_wallet_outlined,
                     title: 'Belum ada rekening tersimpan',
-                    message:
-                        'Tekan "Tambah Referensi" untuk menyimpan rekening tujuan.',
+                    message: 'Tekan "Tambah Referensi" untuk menyimpan rekening tujuan.',
                   );
                 }
                 if (list.isEmpty) {
@@ -291,7 +302,7 @@ class _TransferPageState extends State<TransferPage> {
                 return ListView.separated(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                   itemCount: list.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (_, i) {
                     final a = list[i];
                     return _AccountCard(
@@ -323,13 +334,21 @@ class _TransferPageState extends State<TransferPage> {
         unselectedFontSize: 12,
         items: const [
           BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded), label: 'Beranda'),
+            icon: Icon(Icons.home_rounded),
+            label: 'Beranda',
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.swap_horiz_rounded), label: 'Transfer'),
+            icon: Icon(Icons.swap_horiz_rounded),
+            label: 'Transfer',
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.receipt_long_rounded), label: 'Mutasi'),
+            icon: Icon(Icons.receipt_long_rounded),
+            label: 'Mutasi',
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.person_rounded), label: 'Profil'),
+            icon: Icon(Icons.person_rounded),
+            label: 'Profil',
+          ),
         ],
       ),
     );
@@ -369,32 +388,47 @@ class _AccountCard extends StatelessWidget {
               CircleAvatar(
                 radius: 22,
                 backgroundColor: AppColors.primary,
-                child: Text(account.initials,
-                    style: const TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.w700)),
+                child: Text(
+                  account.initials,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(account.displayName,
+                    Text(
+                      account.displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.textDark,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${account.bank} • ${account.noRekening}',
+                      style: const TextStyle(
+                        color: AppColors.textGrey,
+                        fontSize: 13,
+                      ),
+                    ),
+                    if (account.alias.trim().isNotEmpty)
+                      Text(
+                        account.nama,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                            color: AppColors.textDark,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 2),
-                    Text('${account.bank} • ${account.noRekening}',
-                        style: const TextStyle(
-                            color: AppColors.textGrey, fontSize: 13)),
-                    if (account.alias.trim().isNotEmpty)
-                      Text(account.nama,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              color: AppColors.textGrey, fontSize: 12)),
+                          color: AppColors.textGrey,
+                          fontSize: 12,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -404,23 +438,24 @@ class _AccountCard extends StatelessWidget {
                   account.favorit
                       ? Icons.star_rounded
                       : Icons.star_border_rounded,
-                  color: account.favorit
-                      ? AppColors.star
-                      : AppColors.textGrey,
+                  color: account.favorit ? AppColors.star : AppColors.textGrey,
                 ),
               ),
               PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert, color: AppColors.textGrey),
                 color: AppColors.background,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 onSelected: (v) => v == 'edit' ? onEdit() : onDelete(),
                 itemBuilder: (_) => const [
                   PopupMenuItem(value: 'edit', child: Text('Edit alias')),
                   PopupMenuItem(
                     value: 'delete',
-                    child: Text('Hapus',
-                        style: TextStyle(color: AppColors.danger)),
+                    child: Text(
+                      'Hapus',
+                      style: TextStyle(color: AppColors.danger),
+                    ),
                   ),
                 ],
               ),
@@ -436,8 +471,11 @@ class _AccountCard extends StatelessWidget {
 // Empty / error state
 // ---------------------------------------------------------------------------
 class _InfoState extends StatelessWidget {
-  const _InfoState(
-      {required this.icon, required this.title, required this.message});
+  const _InfoState({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
   final IconData icon;
   final String title;
   final String message;
@@ -450,17 +488,26 @@ class _InfoState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 56, color: AppColors.primary.withOpacity(0.4)),
+            Icon(
+              icon,
+              size: 56,
+              color: AppColors.primary.withValues(alpha: 0.4),
+            ),
             const SizedBox(height: 12),
-            Text(title,
-                style: const TextStyle(
-                    color: AppColors.textDark,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600)),
+            Text(
+              title,
+              style: const TextStyle(
+                color: AppColors.textDark,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             const SizedBox(height: 6),
-            Text(message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.textGrey)),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textGrey),
+            ),
           ],
         ),
       ),
@@ -507,19 +554,19 @@ class _ReferenceFormState extends State<_ReferenceForm> {
   }
 
   InputDecoration _dec(String label, {String? hint}) => InputDecoration(
-        labelText: label,
-        hintText: hint,
-        filled: true,
-        fillColor: AppColors.surface,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-        ),
-      );
+    labelText: label,
+    hintText: hint,
+    filled: true,
+    fillColor: AppColors.surface,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide.none,
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+    ),
+  );
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
@@ -541,7 +588,11 @@ class _ReferenceFormState extends State<_ReferenceForm> {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.fromLTRB(
-          20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+        20,
+        16,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: SingleChildScrollView(
         child: Form(
           key: _formKey,
@@ -560,22 +611,26 @@ class _ReferenceFormState extends State<_ReferenceForm> {
                 ),
               ),
               const SizedBox(height: 16),
-              Text(_isEdit ? 'Edit Referensi' : 'Tambah Referensi',
-                  style: const TextStyle(
-                      color: AppColors.textDark,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700)),
+              Text(
+                _isEdit ? 'Edit Referensi' : 'Tambah Referensi',
+                style: const TextStyle(
+                  color: AppColors.textDark,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _bank,
+                initialValue: _bank,
                 decoration: _dec('Bank Tujuan'),
                 borderRadius: BorderRadius.circular(12),
                 items: kBankList
                     .map((b) => DropdownMenuItem(value: b, child: Text(b)))
                     .toList(),
                 // Bank & nomor rekening tidak diubah saat edit alias.
-                onChanged:
-                    _isEdit ? null : (v) => setState(() => _bank = v ?? _bank),
+                onChanged: _isEdit
+                    ? null
+                    : (v) => setState(() => _bank = v ?? _bank),
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -623,11 +678,16 @@ class _ReferenceFormState extends State<_ReferenceForm> {
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: Text(_isEdit ? 'Simpan Perubahan' : 'Simpan',
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w600)),
+                  child: Text(
+                    _isEdit ? 'Simpan Perubahan' : 'Simpan',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
             ],

@@ -1,7 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'app_style.dart';
+import 'views/otp_view.dart';
 import 'user_service.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -79,7 +81,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     FocusScope.of(context).unfocus();
     setState(() => loading = true);
     try {
-      await userService.register(
+      final pengguna = await userService.register(
         namaDepan: namaDepanController.text,
         namaBelakang: namaBelakangController.text,
         email: emailController.text,
@@ -90,29 +92,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
         kewarganegaraan: nationalityController.text,
       );
       if (!mounted) return;
-      await showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (dialogContext) => AlertDialog(
-          icon: const Icon(Icons.check_circle, color: Colors.green, size: 44),
-          title: const Text('Pendaftaran berhasil'),
-          content: const Text(
-            'Data profil kamu sudah tersimpan. '
-            'Akun masih menunggu verifikasi dan pengaturan password.',
+      await Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => OTPView(
+            email: pengguna['email'] as String,
+            userId: pengguna['id'] as String,
           ),
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Mengerti'),
-            ),
-          ],
         ),
       );
-      if (!mounted) return;
-      Navigator.pop(context);
     } on RegisterException catch (e) {
       pesan(e.pesan);
+    } on FirebaseException catch (e) {
+      debugPrint('Firebase registration error ${e.code}: ${e.message}');
+      pesan('Pendaftaran gagal (Firebase: ${e.code}).');
     } catch (e) {
+      debugPrint('Registration error: $e');
       pesan('Pendaftaran gagal. Periksa koneksi dan konfigurasi Firebase.');
     } finally {
       if (mounted) setState(() => loading = false);

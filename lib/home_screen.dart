@@ -3,14 +3,24 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 
 import 'app_style.dart';
+import 'akun.dart';
+import 'controllers/notification_controller.dart';
+import 'controllers/setting_controller.dart';
+import 'firestore_transaksi_repository.dart';
 import 'login_screen.dart';
 import 'mutasi_page.dart';
+import 'pembayaran_screen.dart';
 import 'transfer_page.dart';
 import 'profile_screen.dart';
 import 'qris_screen.dart';
+import 'status_transaksi_screen.dart';
 import 'user_service.dart';
+import 'views/account_setting_view.dart';
+import 'views/notification_view.dart';
+import 'views/setting_view.dart';
 
 class FiturMenu {
   const FiturMenu(this.nama, this.ikon);
@@ -40,6 +50,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final UserService userService = UserService();
   final ImagePicker picker = ImagePicker();
 
+  late final SettingController settingController;
+  late final NotificationController notificationController;
   late Map<String, dynamic> user;
   bool saldoTerlihat = false;
   Uint8List? fotoBytes;
@@ -48,9 +60,91 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     user = Map<String, dynamic>.from(widget.user);
+    final userId = user['id'] as String;
+    settingController = SettingController(userId: userId)..load();
+    notificationController = NotificationController(userId: userId)..start();
     final data = user['foto'];
     if (data != null) {
       fotoBytes = base64Decode(data);
+    }
+  }
+
+  @override
+  void dispose() {
+    settingController.dispose();
+    notificationController.dispose();
+    super.dispose();
+  }
+
+  Widget denganController(Widget halaman) => MultiProvider(
+    providers: [
+      ChangeNotifierProvider<SettingController>.value(value: settingController),
+      ChangeNotifierProvider<NotificationController>.value(
+        value: notificationController,
+      ),
+    ],
+    child: halaman,
+  );
+
+  Future<void> bukaHalamanPengaturan() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => denganController(const SettingView())),
+    );
+  }
+
+  Future<void> bukaHalamanNotifikasi() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => denganController(const NotificationView()),
+      ),
+    );
+  }
+
+  Future<void> bukaPengaturanAkun() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => denganController(const AccountSettingView()),
+      ),
+    );
+  }
+
+  Future<void> bukaStatusTransaksi() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => StatusTransaksiScreen(
+          repo: FirestoreTransaksiRepository(),
+          userId: user['id'] as String,
+        ),
+      ),
+    );
+    await muatUlang();
+  }
+
+  Future<void> bukaPembayaran() async {
+    try {
+      final rekening = await userService.ambilRekening(user);
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PembayaranScreen(
+            repo: FirestoreTransaksiRepository(),
+            akun: Akun(
+              id: user['id'] as String,
+              nama: user['nama'] as String,
+              rekening: rekening,
+              saldo: (user['saldo'] as num?)?.toInt() ?? 0,
+            ),
+          ),
+        ),
+      );
+      await muatUlang();
+    } catch (e) {
+      pesan('Gagal memuat data rekening');
     }
   }
 
@@ -73,9 +167,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String formatRupiah(int angka) {
     final teks = angka.abs().toString().replaceAllMapped(
-          RegExp(r'\B(?=(\d{3})+(?!\d))'),
-          (m) => '.',
-        );
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (m) => '.',
+    );
     return 'Rp $teks';
   }
 
@@ -200,7 +294,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 1),
               ),
-              child: const Icon(Icons.camera_alt, size: 10, color: Colors.white),
+              child: const Icon(
+                Icons.camera_alt,
+                size: 10,
+                color: Colors.white,
+              ),
             ),
           ),
         ],
@@ -229,7 +327,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> bukaProfil() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => ProfileScreen(user: user)),
+      MaterialPageRoute(
+        builder: (_) => ProfileScreen(
+          user: user,
+          onOpenSettings: bukaHalamanPengaturan,
+          onOpenNotifications: bukaHalamanNotifikasi,
+          onOpenAccountSettings: bukaPengaturanAkun,
+        ),
+      ),
     );
     await muatUlang();
   }
@@ -366,6 +471,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: switch (menu.nama) {
         'Info' => bukaMutasi,
         'Transfer' => bukaTransfer,
+        'Pembayaran' => bukaPembayaran,
         'QRIS' => bukaQris,
         _ => null,
       },
@@ -489,21 +595,25 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget bagianMutasi() {
-    return kartuPutih(
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Mutasi Terakhir',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.biruTua,
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: bukaStatusTransaksi,
+      child: kartuPutih(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Mutasi Terakhir',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.biruTua,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          ...daftarTransaksi.map(barisTransaksi),
-        ],
+            const SizedBox(height: 8),
+            ...daftarTransaksi.map(barisTransaksi),
+          ],
+        ),
       ),
     );
   }
@@ -543,7 +653,12 @@ class _HomeScreenState extends State<HomeScreen> {
             itemBawah(Icons.home_filled, 'Beranda', true),
             itemBawah(Icons.local_offer_outlined, 'Promo', false),
             itemBawah(Icons.qr_code_2, 'QRIS', false, onTap: bukaQris),
-            itemBawah(Icons.mail_outline, 'Inbox', false),
+            itemBawah(
+              Icons.mail_outline,
+              'Inbox',
+              false,
+              onTap: bukaHalamanNotifikasi,
+            ),
             itemBawah(Icons.person_outline, 'Profil', false, onTap: bukaProfil),
           ],
         ),

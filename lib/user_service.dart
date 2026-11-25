@@ -10,8 +10,9 @@ class RegisterException implements Exception {
 }
 
 class UserService {
-  final CollectionReference users =
-      FirebaseFirestore.instance.collection('users');
+  final CollectionReference users = FirebaseFirestore.instance.collection(
+    'users',
+  );
 
   String hashPin(String pin) {
     return sha256.convert(utf8.encode(pin)).toString();
@@ -123,8 +124,10 @@ class UserService {
   }
 
   Future<Map<String, dynamic>?> findByRekening(String rekening) async {
-    final hasil =
-        await users.where('rekening', isEqualTo: rekening).limit(1).get();
+    final hasil = await users
+        .where('rekening', isEqualTo: rekening)
+        .limit(1)
+        .get();
     if (hasil.docs.isEmpty) return null;
     final doc = hasil.docs.first;
     final data = doc.data() as Map<String, dynamic>;
@@ -144,21 +147,70 @@ class UserService {
 
   Future<String?> transfer(String dariId, String keId, int nominal) {
     return FirebaseFirestore.instance.runTransaction<String?>((trx) async {
+      if (nominal <= 0) return 'Nominal harus lebih dari 0';
+      if (dariId == keId) return 'Tidak bisa transfer ke rekening sendiri';
+
       final dariRef = users.doc(dariId);
       final keRef = users.doc(keId);
 
       final dari = await trx.get(dariRef);
       final ke = await trx.get(keRef);
+      if (!dari.exists || !ke.exists) return 'Rekening tidak ditemukan';
 
-      final saldoDari =
-          ((dari.data() as Map<String, dynamic>)['saldo'] as num).toInt();
-      final saldoKe =
-          ((ke.data() as Map<String, dynamic>)['saldo'] as num).toInt();
+      final dataDari = dari.data() as Map<String, dynamic>;
+      final dataKe = ke.data() as Map<String, dynamic>;
+      final saldoDari = (dataDari['saldo'] as num?)?.toInt() ?? 0;
+      final saldoKe = (dataKe['saldo'] as num?)?.toInt() ?? 0;
 
       if (saldoDari < nominal) return 'Saldo tidak cukup';
 
+      final mutasiDari = dariRef.collection('mutasi').doc();
+      final idTransaksi = 'TRX${mutasiDari.id}';
+      final mutasiKe = keRef.collection('mutasi').doc(idTransaksi);
+      final notifikasiDari = dariRef.collection('notifications').doc();
+      final notifikasiKe = keRef.collection('notifications').doc();
+      final tanggal = FieldValue.serverTimestamp();
+
       trx.update(dariRef, {'saldo': saldoDari - nominal});
       trx.update(keRef, {'saldo': saldoKe + nominal});
+      trx.set(mutasiDari, {
+        'idTransaksi': idTransaksi,
+        'tanggal': tanggal,
+        'tipe': 'debit',
+        'nominal': nominal,
+        'nama': dataKe['nama'] ?? '-',
+        'berita': 'Transfer QRIS',
+        'status': 'Berhasil',
+        'jenis': 'Transfer QRIS',
+        'rekeningLawan': dataKe['rekening'] ?? '-',
+      });
+      trx.set(mutasiKe, {
+        'idTransaksi': idTransaksi,
+        'tanggal': tanggal,
+        'tipe': 'kredit',
+        'nominal': nominal,
+        'nama': dataDari['nama'] ?? '-',
+        'berita': 'Transfer QRIS',
+        'status': 'Berhasil',
+        'jenis': 'Transfer QRIS',
+        'rekeningLawan': dataDari['rekening'] ?? '-',
+      });
+      trx.set(notifikasiDari, {
+        'title': 'Transfer Berhasil',
+        'message':
+            'Transfer Rp$nominal ke ${dataKe['nama'] ?? 'penerima'} berhasil.',
+        'type': 'transaksi',
+        'isRead': false,
+        'tanggal': tanggal,
+      });
+      trx.set(notifikasiKe, {
+        'title': 'Dana Diterima',
+        'message':
+            'Anda menerima transfer Rp$nominal dari ${dataDari['nama'] ?? 'pengirim'}.',
+        'type': 'transaksi',
+        'isRead': false,
+        'tanggal': tanggal,
+      });
       return null;
     });
   }
@@ -201,8 +253,18 @@ class UserService {
 
   String _bulanTahun(DateTime d) {
     const bulan = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
     ];
     return '${bulan[d.month - 1]} ${d.year}';
   }
@@ -220,13 +282,17 @@ class UserService {
     final emailBersih = email.trim().toLowerCase();
     final phoneBersih = normalisasiPhone(phone);
 
-    final cekEmail =
-        await users.where('email', isEqualTo: emailBersih).limit(1).get();
+    final cekEmail = await users
+        .where('email', isEqualTo: emailBersih)
+        .limit(1)
+        .get();
     if (cekEmail.docs.isNotEmpty) {
       throw RegisterException('Email sudah terdaftar');
     }
-    final cekPhone =
-        await users.where('phone', isEqualTo: phoneBersih).limit(1).get();
+    final cekPhone = await users
+        .where('phone', isEqualTo: phoneBersih)
+        .limit(1)
+        .get();
     if (cekPhone.docs.isNotEmpty) {
       throw RegisterException('Nomor HP sudah terdaftar');
     }

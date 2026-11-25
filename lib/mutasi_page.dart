@@ -73,9 +73,18 @@ class _MutasiPageState extends State<MutasiPage> {
 
       if (_range != null) {
         final start = DateTime(
-            _range!.start.year, _range!.start.month, _range!.start.day);
+          _range!.start.year,
+          _range!.start.month,
+          _range!.start.day,
+        );
         final end = DateTime(
-            _range!.end.year, _range!.end.month, _range!.end.day, 23, 59, 59);
+          _range!.end.year,
+          _range!.end.month,
+          _range!.end.day,
+          23,
+          59,
+          59,
+        );
         if (t.tanggal.isBefore(start) || t.tanggal.isAfter(end)) return false;
       }
 
@@ -117,11 +126,13 @@ class _MutasiPageState extends State<MutasiPage> {
   void _snack(String msg, {bool error = false}) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: Text(msg),
-        backgroundColor: error ? MutasiColors.keluar : MutasiColors.masuk,
-        behavior: SnackBarBehavior.floating,
-      ));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          backgroundColor: error ? MutasiColors.keluar : MutasiColors.masuk,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
   }
 
   Future<void> _downloadPdf(_MutasiData data) async {
@@ -151,7 +162,8 @@ class _MutasiPageState extends State<MutasiPage> {
     }
   }
 
-  String _shareText(MutasiTransaction t, MutasiProfile p) => '''
+  String _shareText(MutasiTransaction t, MutasiProfile p) =>
+      '''
 MyBCA - Rincian Transaksi
 ID Transaksi : ${t.idTransaksi}
 Tanggal      : ${tanggalPanjang(t.tanggal)}, ${jam(t.tanggal)}
@@ -172,8 +184,8 @@ Status       : ${t.status}
       ),
       builder: (ctx) => _DetailSheet(
         t: t,
-        onShare: () => SharePlus.instance
-            .share(ShareParams(text: _shareText(t, p))),
+        onShare: () =>
+            SharePlus.instance.share(ShareParams(text: _shareText(t, p))),
         onCopy: () {
           Clipboard.setData(ClipboardData(text: t.idTransaksi));
           _snack('ID transaksi disalin');
@@ -196,8 +208,10 @@ Status       : ${t.status}
             foregroundColor: Colors.white,
             elevation: 0,
             centerTitle: true,
-            title: const Text('Mutasi Rekening',
-                style: TextStyle(fontWeight: FontWeight.w600)),
+            title: const Text(
+              'Mutasi Rekening',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
               onPressed: () => Navigator.maybePop(context),
@@ -255,15 +269,18 @@ Status       : ${t.status}
     }
     if (!snap.hasData) {
       return const Center(
-          child: CircularProgressIndicator(color: MutasiColors.primary));
+        child: CircularProgressIndicator(color: MutasiColors.primary),
+      );
     }
 
     final data = snap.data!;
     final filtered = _applyFilter(data.items);
-    final totalMasuk =
-        filtered.where((e) => e.isKredit).fold<int>(0, (s, e) => s + e.nominal);
-    final totalKeluar =
-        filtered.where((e) => !e.isKredit).fold<int>(0, (s, e) => s + e.nominal);
+    final totalMasuk = filtered
+        .where((e) => e.isKredit)
+        .fold<int>(0, (s, e) => s + e.nominal);
+    final totalKeluar = filtered
+        .where((e) => !e.isKredit)
+        .fold<int>(0, (s, e) => s + e.nominal);
 
     return RefreshIndicator(
       color: MutasiColors.primary,
@@ -298,13 +315,18 @@ Status       : ${t.status}
             decoration: InputDecoration(
               hintText: 'Cari nama, berita, atau ID transaksi',
               hintStyle: const TextStyle(color: MutasiColors.textGrey),
-              prefixIcon:
-                  const Icon(Icons.search, color: MutasiColors.textGrey),
+              prefixIcon: const Icon(
+                Icons.search,
+                color: MutasiColors.textGrey,
+              ),
               suffixIcon: _query.isEmpty
                   ? null
                   : IconButton(
-                      icon: const Icon(Icons.close,
-                          size: 20, color: MutasiColors.textGrey),
+                      icon: const Icon(
+                        Icons.close,
+                        size: 20,
+                        color: MutasiColors.textGrey,
+                      ),
                       onPressed: () {
                         _searchCtrl.clear();
                         setState(() => _query = '');
@@ -333,24 +355,35 @@ Status       : ${t.status}
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.calendar_month_outlined,
-                      size: 20, color: MutasiColors.primary),
+                  const Icon(
+                    Icons.calendar_month_outlined,
+                    size: 20,
+                    color: MutasiColors.primary,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(_periodeText,
-                        style: const TextStyle(
-                            color: MutasiColors.textDark,
-                            fontWeight: FontWeight.w500)),
+                    child: Text(
+                      _periodeText,
+                      style: const TextStyle(
+                        color: MutasiColors.textDark,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                   if (_range != null)
                     GestureDetector(
                       onTap: () => setState(() => _range = null),
-                      child: const Icon(Icons.close,
-                          size: 20, color: MutasiColors.textGrey),
+                      child: const Icon(
+                        Icons.close,
+                        size: 20,
+                        color: MutasiColors.textGrey,
+                      ),
                     )
                   else
-                    const Icon(Icons.keyboard_arrow_down_rounded,
-                        color: MutasiColors.textGrey),
+                    const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: MutasiColors.textGrey,
+                    ),
                 ],
               ),
             ),
@@ -395,8 +428,7 @@ Status       : ${t.status}
         const _InfoState(
           icon: Icons.receipt_long_outlined,
           title: 'Belum ada transaksi',
-          message:
-              'Riwayat mutasi akan muncul di sini.\nUntuk mencoba, pilih menu titik tiga > "Tambah data contoh".',
+          message: 'Riwayat mutasi akan muncul di sini.\nUntuk mencoba, pilih menu titik tiga > "Tambah data contoh".',
         ),
       ];
     }
@@ -417,22 +449,29 @@ Status       : ${t.status}
       final day = tanggalPanjang(t.tanggal);
       if (day != lastDay) {
         lastDay = day;
-        widgets.add(Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-          child: Text(day,
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+            child: Text(
+              day,
               style: const TextStyle(
-                  color: MutasiColors.textGrey,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600)),
-        ));
+                color: MutasiColors.textGrey,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        );
       }
-      widgets.add(Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-        child: _TransactionTile(
-          t: t,
-          onTap: () => _openDetail(t, data.profile),
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: _TransactionTile(
+            t: t,
+            onTap: () => _openDetail(t, data.profile),
+          ),
         ),
-      ));
+      );
     }
     return widgets;
   }
@@ -469,17 +508,24 @@ class _AccountCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(profile.nama,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600)),
+          Text(
+            profile.nama,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 2),
-          Text('Tabungan  •  ${profile.noRekening}',
-              style: const TextStyle(color: Colors.white70, fontSize: 13)),
+          Text(
+            'Tabungan  •  ${profile.noRekening}',
+            style: const TextStyle(color: Colors.white70, fontSize: 13),
+          ),
           const SizedBox(height: 18),
-          const Text('Saldo Aktif',
-              style: TextStyle(color: Colors.white70, fontSize: 12)),
+          const Text(
+            'Saldo Aktif',
+            style: TextStyle(color: Colors.white70, fontSize: 12),
+          ),
           const SizedBox(height: 4),
           Row(
             children: [
@@ -487,9 +533,10 @@ class _AccountCard extends StatelessWidget {
                 child: Text(
                   hidden ? 'Rp ••••••••' : rupiah(profile.saldo),
                   style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700),
+                    color: Colors.white,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               IconButton(
@@ -520,30 +567,37 @@ class _SummaryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget box(String label, int value, Color color) => Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: MutasiColors.card,
-              borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: MutasiColors.card,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                color: MutasiColors.textGrey,
+                fontSize: 12,
+              ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style: const TextStyle(
-                        color: MutasiColors.textGrey, fontSize: 12)),
-                const SizedBox(height: 4),
-                Text(rupiah(value),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        color: color,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700)),
-              ],
+            const SizedBox(height: 4),
+            Text(
+              rupiah(value),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-        );
+          ],
+        ),
+      ),
+    );
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -606,25 +660,34 @@ class _TransactionTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(t.nama,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            color: MutasiColors.textDark,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600)),
+                    Text(
+                      t.nama,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: MutasiColors.textDark,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       t.berita.isEmpty ? '-' : t.berita,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          color: MutasiColors.textGrey, fontSize: 12),
+                        color: MutasiColors.textGrey,
+                        fontSize: 12,
+                      ),
                     ),
                     const SizedBox(height: 2),
-                    Text(jam(t.tanggal),
-                        style: const TextStyle(
-                            color: MutasiColors.textGrey, fontSize: 12)),
+                    Text(
+                      jam(t.tanggal),
+                      style: const TextStyle(
+                        color: MutasiColors.textGrey,
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -632,17 +695,23 @@ class _TransactionTile extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('${t.isKredit ? '+' : '-'} ${rupiah(t.nominal)}',
-                      style: TextStyle(
-                          color: color,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700)),
+                  Text(
+                    '${t.isKredit ? '+' : '-'} ${rupiah(t.nominal)}',
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text(t.status,
-                      style: TextStyle(
-                          color: _statusColor(t.status),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500)),
+                  Text(
+                    t.status,
+                    style: TextStyle(
+                      color: _statusColor(t.status),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -672,28 +741,35 @@ class _DetailSheet extends StatelessWidget {
     final color = t.isKredit ? MutasiColors.masuk : MutasiColors.keluar;
 
     Widget row(String label, String value, {Widget? trailing}) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 120,
-                child: Text(label,
-                    style: const TextStyle(
-                        color: MutasiColors.textGrey, fontSize: 13)),
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: MutasiColors.textGrey,
+                fontSize: 13,
               ),
-              Expanded(
-                child: Text(value,
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(
-                        color: MutasiColors.textDark,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600)),
-              ),
-              if (trailing != null) trailing,
-            ],
+            ),
           ),
-        );
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                color: MutasiColors.textDark,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ...?(trailing == null ? null : [trailing]),
+        ],
+      ),
+    );
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -714,19 +790,30 @@ class _DetailSheet extends StatelessWidget {
               radius: 28,
               backgroundColor: color.withValues(alpha: 0.12),
               child: Icon(
-                t.isKredit ? Icons.south_west_rounded : Icons.north_east_rounded,
+                t.isKredit
+                    ? Icons.south_west_rounded
+                    : Icons.north_east_rounded,
                 color: color,
                 size: 28,
               ),
             ),
             const SizedBox(height: 12),
-            Text(t.isKredit ? 'Uang Masuk' : 'Uang Keluar',
-                style: const TextStyle(
-                    color: MutasiColors.textGrey, fontSize: 13)),
+            Text(
+              t.isKredit ? 'Uang Masuk' : 'Uang Keluar',
+              style: const TextStyle(
+                color: MutasiColors.textGrey,
+                fontSize: 13,
+              ),
+            ),
             const SizedBox(height: 4),
-            Text('${t.isKredit ? '+' : '-'} ${rupiah(t.nominal)}',
-                style: TextStyle(
-                    color: color, fontSize: 28, fontWeight: FontWeight.w800)),
+            Text(
+              '${t.isKredit ? '+' : '-'} ${rupiah(t.nominal)}',
+              style: TextStyle(
+                color: color,
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -734,11 +821,14 @@ class _DetailSheet extends StatelessWidget {
                 color: _statusColor(t.status).withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text(t.status,
-                  style: TextStyle(
-                      color: _statusColor(t.status),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13)),
+              child: Text(
+                t.status,
+                style: TextStyle(
+                  color: _statusColor(t.status),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
             ),
             const SizedBox(height: 16),
             Container(
@@ -749,18 +839,26 @@ class _DetailSheet extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  row('ID Transaksi', t.idTransaksi,
-                      trailing: GestureDetector(
-                        onTap: onCopy,
-                        child: const Padding(
-                          padding: EdgeInsets.only(left: 6),
-                          child: Icon(Icons.copy_rounded,
-                              size: 16, color: MutasiColors.primary),
+                  row(
+                    'ID Transaksi',
+                    t.idTransaksi,
+                    trailing: GestureDetector(
+                      onTap: onCopy,
+                      child: const Padding(
+                        padding: EdgeInsets.only(left: 6),
+                        child: Icon(
+                          Icons.copy_rounded,
+                          size: 16,
+                          color: MutasiColors.primary,
                         ),
-                      )),
+                      ),
+                    ),
+                  ),
                   const Divider(height: 1, color: MutasiColors.divider),
-                  row('Tanggal & Waktu',
-                      '${tanggalPanjang(t.tanggal)}, ${jam(t.tanggal)}'),
+                  row(
+                    'Tanggal & Waktu',
+                    '${tanggalPanjang(t.tanggal)}, ${jam(t.tanggal)}',
+                  ),
                   const Divider(height: 1, color: MutasiColors.divider),
                   row(t.isKredit ? 'Pengirim' : 'Penerima', t.nama),
                   const Divider(height: 1, color: MutasiColors.divider),
@@ -779,15 +877,17 @@ class _DetailSheet extends StatelessWidget {
               child: ElevatedButton.icon(
                 onPressed: onShare,
                 icon: const Icon(Icons.share_outlined),
-                label: const Text('Bagikan',
-                    style:
-                        TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                label: const Text(
+                  'Bagikan',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: MutasiColors.primary,
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),
@@ -822,18 +922,26 @@ class _InfoState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon,
-                size: 56, color: MutasiColors.primary.withValues(alpha: 0.4)),
+            Icon(
+              icon,
+              size: 56,
+              color: MutasiColors.primary.withValues(alpha: 0.4),
+            ),
             const SizedBox(height: 12),
-            Text(title,
-                style: const TextStyle(
-                    color: MutasiColors.textDark,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600)),
+            Text(
+              title,
+              style: const TextStyle(
+                color: MutasiColors.textDark,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             const SizedBox(height: 6),
-            Text(message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: MutasiColors.textGrey)),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: MutasiColors.textGrey),
+            ),
             if (action != null) ...[const SizedBox(height: 8), action!],
           ],
         ),

@@ -9,8 +9,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 String formatWaktu(int ms) {
   const bulan = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-    'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'Mei',
+    'Jun',
+    'Jul',
+    'Agu',
+    'Sep',
+    'Okt',
+    'Nov',
+    'Des',
   ];
   final d = DateTime.fromMillisecondsSinceEpoch(ms);
   final jam = d.hour.toString().padLeft(2, '0');
@@ -27,8 +37,9 @@ class PerangkatIni {
 
 class SecurityService {
   final SharedPreferencesAsync prefs = SharedPreferencesAsync();
-  final CollectionReference users =
-      FirebaseFirestore.instance.collection('users');
+  final CollectionReference users = FirebaseFirestore.instance.collection(
+    'users',
+  );
 
   String _hash(String teks) => sha256.convert(utf8.encode(teks)).toString();
 
@@ -38,7 +49,8 @@ class SecurityService {
   Future<PerangkatIni> perangkatIni() async {
     var id = await prefs.getString('deviceId');
     if (id == null) {
-      id = 'dev${DateTime.now().millisecondsSinceEpoch}${Random().nextInt(1000)}';
+      id =
+          'dev${DateTime.now().millisecondsSinceEpoch}${Random().nextInt(1000)}';
       await prefs.setString('deviceId', id);
     }
     final os = Platform.isAndroid
@@ -84,7 +96,7 @@ class SecurityService {
         'berhasil': berhasil,
         'perangkat': dev.nama,
         'deviceId': dev.id,
-        if (catatan != null) 'catatan': catatan,
+        ...?(catatan == null ? null : {'catatan': catatan}),
       });
 
       if (!berhasil) return;
@@ -93,7 +105,7 @@ class SecurityService {
       await devRef.set({
         'nama': dev.nama,
         'terakhirAktif': sekarang,
-        if (!ada.exists) 'pertamaKali': sekarang,
+        ...?(!ada.exists ? {'pertamaKali': sekarang} : null),
       }, SetOptions(merge: true));
     } catch (e) {
       debugPrint('Gagal mencatat aktivitas login: $e');

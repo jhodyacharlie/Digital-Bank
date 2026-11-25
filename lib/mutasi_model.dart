@@ -25,7 +25,9 @@ class MutasiTransaction {
 
   bool get isKredit => tipe == 'kredit';
 
-  factory MutasiTransaction.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+  factory MutasiTransaction.fromDoc(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
     final d = doc.data() ?? {};
     return MutasiTransaction(
       id: doc.id,
@@ -56,7 +58,7 @@ class MutasiProfile {
     d ??= {};
     return MutasiProfile(
       nama: (d['nama'] ?? '-') as String,
-      noRekening: (d['noRekening'] ?? '-') as String,
+      noRekening: (d['rekening'] ?? d['noRekening'] ?? '-') as String,
       saldo: (d['saldo'] as num?)?.toInt() ?? 0,
     );
   }
