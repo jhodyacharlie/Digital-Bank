@@ -6,6 +6,7 @@ import 'app_style.dart';
 import 'forgot_pin_screen.dart';
 import 'home_screen.dart';
 import 'pin_pad.dart';
+import 'register_screen.dart';
 import 'user_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -39,6 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void muatData() async {
     String idTersimpan = await prefs.getString('lastLogin') ?? '';
+    bool aktif = await prefs.getBool('biometrik') ?? true;
     bool bisa = false;
     try {
       bisa = await auth.canCheckBiometrics;
@@ -48,7 +50,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     setState(() {
       idController.text = idTersimpan;
-      bisaFingerprint = bisa;
+      bisaFingerprint = bisa && aktif;
     });
   }
 
@@ -216,6 +218,25 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: const Text('Lupa PIN?'),
                   ),
                   if (loading) const CircularProgressIndicator(),
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('Belum punya akun? ',
+                        style: TextStyle(color: AppColors.abu)),
+                      TextButton(
+                        onPressed: loading
+                            ? null
+                            : () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const RegisterScreen(),
+                                  ),
+                                ),
+                        child: const Text('Daftar sekarang'),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),

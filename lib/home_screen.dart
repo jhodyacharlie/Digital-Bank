@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'app_style.dart';
 import 'login_screen.dart';
+import 'profile_screen.dart';
 import 'qris_screen.dart';
 import 'user_service.dart';
 
@@ -126,9 +127,13 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       final bytes = await file.readAsBytes();
-      await userService.simpanFoto(user['id'], base64Encode(bytes));
+      final fotoBase64 = base64Encode(bytes);
+      await userService.simpanFoto(user['id'], fotoBase64);
       if (!mounted) return;
-      setState(() => fotoBytes = bytes);
+      setState(() {
+        fotoBytes = bytes;
+        user['foto'] = fotoBase64;
+      });
     } catch (e) {
       pesan('Gagal menyimpan foto profil');
     }
@@ -201,12 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> bukaQris() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => QrisScreen(user: user)),
-    );
-
+  Future<void> muatUlang() async {
     try {
       final terbaru = await userService.getUser(user['id']);
       if (!mounted || terbaru == null) return;
@@ -214,6 +214,22 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       debugPrint('Gagal memuat ulang data: $e');
     }
+  }
+
+  Future<void> bukaQris() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => QrisScreen(user: user)),
+    );
+    await muatUlang();
+  }
+
+  Future<void> bukaProfil() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ProfileScreen(user: user)),
+    );
+    await muatUlang();
   }
 
   Widget kartuPutih(Widget isi) {
@@ -501,7 +517,7 @@ class _HomeScreenState extends State<HomeScreen> {
             itemBawah(Icons.local_offer_outlined, 'Promo', false),
             itemBawah(Icons.qr_code_2, 'QRIS', false, onTap: bukaQris),
             itemBawah(Icons.mail_outline, 'Inbox', false),
-            itemBawah(Icons.person_outline, 'Profil', false),
+            itemBawah(Icons.person_outline, 'Profil', false, onTap: bukaProfil),
           ],
         ),
       ),
