@@ -3,12 +3,16 @@ import 'package:provider/provider.dart';
 
 import '../controllers/setting_controller.dart';
 import '../controllers/notification_controller.dart';
+import '../login_screen.dart';
+import '../services/locale_service.dart';
 import 'widgets/menu_tile.dart';
 import 'account_setting_view.dart';
 import 'notification_view.dart';
 
 class SettingView extends StatelessWidget {
   const SettingView({super.key});
+
+  String _t(String id, String en) => LocaleService.tr(id, en);
 
   @override
   Widget build(BuildContext context) {
@@ -20,10 +24,9 @@ class SettingView extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: const Color(0xFF1456A5),
         foregroundColor: Colors.white,
-        title: const Text('Pengaturan'),
+        title: Text(_t('Pengaturan', 'Settings')),
         centerTitle: true,
         actions: [
-          // Ikon lonceng + badge jumlah notifikasi belum dibaca
           Stack(
             children: [
               IconButton(
@@ -58,32 +61,33 @@ class SettingView extends StatelessWidget {
       ),
       body: ListView(
         children: [
-          // ===== Header biru =====
           Container(
             width: double.infinity,
             color: const Color(0xFF1456A5),
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Pengaturan',
-                  style: TextStyle(
+                  _t('Pengaturan', 'Settings'),
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  'Atur aplikasi sesuai preferensi kamu',
-                  style: TextStyle(color: Colors.white, fontSize: 12),
+                  _t(
+                    'Atur aplikasi sesuai preferensi kamu',
+                    'Customize the app to your preferences',
+                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
                 ),
               ],
             ),
           ),
 
-          // ===== Gagal memuat data akun dari Firebase =====
           if (c.loadError != null)
             Container(
               width: double.infinity,
@@ -95,7 +99,6 @@ class SettingView extends StatelessWidget {
               ),
             ),
 
-          // ===== Kartu profil =====
           ListTile(
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
@@ -110,23 +113,25 @@ class SettingView extends StatelessWidget {
               s.name,
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            subtitle: Text('ID Pengguna: ${s.userId}'),
+            subtitle: Text('${_t('ID Pengguna', 'User ID')}: ${s.userId}'),
             trailing: const Icon(Icons.chevron_right),
           ),
           const Divider(),
 
-          // ===== PERSONALISASI =====
-          const SectionTitle('PERSONALISASI'),
+          SectionTitle(_t('PERSONALISASI', 'PERSONALIZATION')),
           MenuTile(
             icon: Icons.notifications_none,
-            title: 'Pengaturan Notifikasi',
-            subtitle: 'Atur pemberitahuan aplikasi',
+            title: _t('Pengaturan Notifikasi', 'Notification Settings'),
+            subtitle: _t(
+              'Atur pemberitahuan aplikasi',
+              'Manage app notifications',
+            ),
             onTap: () => _showNotifSettings(context),
           ),
           MenuTile(
             icon: Icons.dark_mode_outlined,
-            title: 'Tema Aplikasi',
-            subtitle: 'Light / Dark Mode',
+            title: _t('Tema Aplikasi', 'App Theme'),
+            subtitle: _t('Light / Dark Mode', 'Light / Dark Mode'),
             trailing: StatusBadge(
               s.isDarkMode ? 'Dark' : 'Light',
               color: Colors.blue,
@@ -135,62 +140,73 @@ class SettingView extends StatelessWidget {
           ),
           MenuTile(
             icon: Icons.translate,
-            title: 'Bahasa',
+            title: _t('Bahasa', 'Language'),
             subtitle: s.language,
             onTap: () => _pilihBahasa(context, c),
           ),
           const Divider(),
 
-          // ===== KEAMANAN =====
-          const SectionTitle('KEAMANAN'),
+          SectionTitle(_t('KEAMANAN', 'SECURITY')),
           MenuTile(
             icon: Icons.fingerprint,
-            title: 'Login Biometrik',
-            subtitle: 'Gunakan sidik jari atau wajah',
+            title: _t('Login Biometrik', 'Biometric Login'),
+            subtitle: _t(
+              'Gunakan sidik jari atau wajah',
+              'Use fingerprint or face unlock',
+            ),
             trailing: StatusBadge(
-              s.biometricEnabled ? 'Aktif' : 'Nonaktif',
+              s.biometricEnabled
+                  ? _t('Aktif', 'Active')
+                  : _t('Nonaktif', 'Off'),
               color: s.biometricEnabled ? Colors.green : Colors.grey,
             ),
             onTap: () => _openAccount(context),
           ),
           MenuTile(
             icon: Icons.lock_outline,
-            title: 'PIN Aplikasi',
-            subtitle: 'Pengaturan PIN keamanan',
+            title: _t('PIN Aplikasi', 'App PIN'),
+            subtitle: _t('Pengaturan PIN keamanan', 'Security PIN settings'),
             trailing: StatusBadge(
-              s.pinEnabled ? 'Aktif' : 'Nonaktif',
+              s.pinEnabled ? _t('Aktif', 'Active') : _t('Nonaktif', 'Off'),
               color: s.pinEnabled ? Colors.green : Colors.grey,
             ),
             onTap: () => _openAccount(context),
           ),
           MenuTile(
             icon: Icons.shield_outlined,
-            title: 'Keamanan Akun',
-            subtitle: 'Pengaturan perlindungan akun',
+            title: _t('Keamanan Akun', 'Account Security'),
+            subtitle: _t(
+              'Pengaturan perlindungan akun',
+              'Account protection settings',
+            ),
             trailing: StatusBadge(
-              s.accountProtection ? 'Aktif' : 'Nonaktif',
+              s.accountProtection
+                  ? _t('Aktif', 'Active')
+                  : _t('Nonaktif', 'Off'),
               color: s.accountProtection ? Colors.green : Colors.grey,
             ),
             onTap: () => _openAccount(context),
           ),
           const Divider(),
 
-          // ===== LAINNYA =====
-          const SectionTitle('LAINNYA'),
+          SectionTitle(_t('LAINNYA', 'OTHERS')),
           MenuTile(
             icon: Icons.info_outline,
-            title: 'Tentang Aplikasi',
-            subtitle: 'Versi dan informasi aplikasi',
+            title: _t('Tentang Aplikasi', 'About App'),
+            subtitle: _t(
+              'Versi dan informasi aplikasi',
+              'Version and app information',
+            ),
             onTap: () => showAboutDialog(
               context: context,
-              applicationName: 'myBCA',
+              applicationName: 'MyBCA',
               applicationVersion: '1.0.0',
-              applicationLegalese: 'Aplikasi latihan Flutter',
+              applicationLegalese: 'MyBCA Digital Banking Flutter App',
             ),
           ),
           MenuTile(
             icon: Icons.logout,
-            title: 'Keluar dari Akun',
+            title: _t('Keluar dari Akun', 'Sign Out'),
             color: Colors.redAccent,
             trailing: const SizedBox.shrink(),
             onTap: () => _konfirmasiKeluar(context, c),
@@ -239,25 +255,32 @@ class SettingView extends StatelessWidget {
         builder: (_, n, _) => Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
+            Padding(
+              padding: const EdgeInsets.all(16),
               child: Text(
-                'Pengaturan Notifikasi',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                _t('Pengaturan Notifikasi', 'Notification Settings'),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
             ),
             SwitchListTile(
-              title: const Text('Notifikasi Transaksi'),
+              title: Text(
+                _t('Notifikasi Transaksi', 'Transaction Notifications'),
+              ),
               value: n.notifTransaksi,
               onChanged: n.setTransaksi,
             ),
             SwitchListTile(
-              title: const Text('Notifikasi Promo'),
+              title: Text(_t('Notifikasi Promo', 'Promo Notifications')),
               value: n.notifPromo,
               onChanged: n.setPromo,
             ),
             SwitchListTile(
-              title: const Text('Notifikasi Info'),
+              title: Text(
+                _t('Notifikasi Info & Berita', 'Info & News Notifications'),
+              ),
               value: n.notifInfo,
               onChanged: n.setInfo,
             ),
@@ -271,25 +294,31 @@ class SettingView extends StatelessWidget {
   void _konfirmasiKeluar(BuildContext context, SettingController c) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Keluar dari Akun'),
-        content: const Text('Apakah kamu yakin ingin keluar?'),
+      builder: (dialogCtx) => AlertDialog(
+        title: Text(_t('Keluar dari Akun', 'Sign Out')),
+        content: Text(
+          _t(
+            'Apakah kamu yakin ingin keluar?',
+            'Are you sure you want to sign out?',
+          ),
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: Text(_t('Batal', 'Cancel')),
           ),
           TextButton(
             onPressed: () async {
               await c.logout();
               if (context.mounted) {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Berhasil keluar')),
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (route) => false,
                 );
               }
             },
-            child: const Text('Keluar'),
+            child: Text(_t('Keluar', 'Sign Out')),
           ),
         ],
       ),

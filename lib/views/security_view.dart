@@ -5,9 +5,9 @@ import '../controllers/security_controller.dart';
 import '../login_screen.dart';
 
 class SecurityView extends StatefulWidget {
-  final String userId;
+  final Map<String, dynamic> registrationData;
 
-  const SecurityView({super.key, required this.userId});
+  const SecurityView({super.key, required this.registrationData});
 
   @override
   State<SecurityView> createState() => _SecurityViewState();
@@ -53,13 +53,13 @@ class _SecurityViewState extends State<SecurityView> {
     });
 
     try {
-      final saved = await _controller.savePIN(widget.userId);
+      final saved = await _controller.savePIN(widget.registrationData);
 
       if (!mounted) return;
 
       if (!saved) {
         setState(() {
-          _message = 'PIN gagal disimpan ke Firebase.';
+          _message = _controller.saveError ?? 'PIN gagal disimpan ke Firebase.';
           _isLoading = false;
         });
         return;
@@ -96,11 +96,13 @@ class _SecurityViewState extends State<SecurityView> {
           ],
         ),
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('Save PIN error: $e');
+      debugPrintStack(stackTrace: stackTrace);
       if (!mounted) return;
 
       setState(() {
-        _message = 'Terjadi kesalahan saat menyimpan PIN.';
+        _message = 'Gagal menyimpan PIN: $e';
         _isLoading = false;
       });
     }
@@ -118,7 +120,7 @@ class _SecurityViewState extends State<SecurityView> {
     const navy = Color(0xFF0B3D91);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F6FA),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: navy,
         foregroundColor: Colors.white,
@@ -136,7 +138,7 @@ class _SecurityViewState extends State<SecurityView> {
             ),
             const SizedBox(height: 12),
             const Text(
-              'Buat PIN 6 digit untuk keamanan akun Digital Banking DIGEBOY.',
+              'Buat PIN 6 digit untuk keamanan akun MyBCA.',
               style: TextStyle(fontSize: 15),
             ),
             const SizedBox(height: 32),

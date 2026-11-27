@@ -4,6 +4,7 @@ import '../services/security_service.dart';
 class SecurityController {
   String? _pin;
   final SecurityService _service = SecurityService();
+  String? get saveError => _service.lastError;
 
   bool createPIN(String pin) {
     if (!SecurityModel.isValidPIN(pin)) {
@@ -20,10 +21,10 @@ class SecurityController {
     return SecurityModel.confirmPIN(_pin!, confirmPin);
   }
 
-  Future<bool> savePIN(String userId) async {
+  Future<bool> savePIN(Map<String, dynamic> profile) async {
     if (_pin == null) return false;
 
-    return _service.savePIN(userId, _pin!);
+    return _service.savePIN(profile, _pin!);
   }
 
   Future<String?> getSavedPIN(String userId) async {

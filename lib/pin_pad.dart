@@ -16,7 +16,7 @@ class PinPad extends StatelessWidget {
   final VoidCallback onDelete;
   final Widget? leftButton;
 
-  Widget tombol(String angka) {
+  Widget tombol(BuildContext context, String angka) {
     return SizedBox(
       width: 80,
       height: 64,
@@ -24,21 +24,22 @@ class PinPad extends StatelessWidget {
         onPressed: () => onDigit(angka),
         child: Text(
           angka,
-          style: const TextStyle(fontSize: 28, color: AppColors.biruTua),
+          style: TextStyle(fontSize: 28, color: AppColors.textPrimary(context)),
         ),
       ),
     );
   }
 
-  Widget baris(List<String> angka) {
+  Widget baris(BuildContext context, List<String> angka) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: angka.map(tombol).toList(),
+      children: angka.map((a) => tombol(context, a)).toList(),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final dotColor = AppColors.accent(context);
     return Column(
       children: [
         Row(
@@ -51,16 +52,16 @@ class PinPad extends StatelessWidget {
               height: 16,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: terisi ? AppColors.biru : Colors.transparent,
-                border: Border.all(color: AppColors.biru, width: 2),
+                color: terisi ? dotColor : Colors.transparent,
+                border: Border.all(color: dotColor, width: 2),
               ),
             );
           }),
         ),
         const SizedBox(height: 24),
-        baris(['1', '2', '3']),
-        baris(['4', '5', '6']),
-        baris(['7', '8', '9']),
+        baris(context, ['1', '2', '3']),
+        baris(context, ['4', '5', '6']),
+        baris(context, ['7', '8', '9']),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
@@ -69,16 +70,13 @@ class PinPad extends StatelessWidget {
               height: 64,
               child: leftButton ?? const SizedBox(),
             ),
-            tombol('0'),
+            tombol(context, '0'),
             SizedBox(
               width: 80,
               height: 64,
               child: IconButton(
                 onPressed: onDelete,
-                icon: const Icon(
-                  Icons.backspace_outlined,
-                  color: AppColors.biru,
-                ),
+                icon: Icon(Icons.backspace_outlined, color: dotColor),
               ),
             ),
           ],

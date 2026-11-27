@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../models/notification_model.dart';
+import '../services/local_notification_service.dart';
 import '../services/notification_service.dart';
 import '../services/setting_service.dart';
 
@@ -11,15 +12,19 @@ class NotificationController extends ChangeNotifier {
     required this.userId,
     NotificationService? service,
     SettingService? settingService,
-  })  : _service = service ?? NotificationService(),
-        _settings = settingService ?? SettingService();
+    this.onIncoming,
+  }) : _service = service ?? NotificationService(),
+       _settings = settingService ?? SettingService();
 
   final String userId;
   final NotificationService _service;
   final SettingService _settings;
+  final void Function(NotificationModel notification)? onIncoming;
 
   List<NotificationModel> _items = [];
   StreamSubscription<List<NotificationModel>>? _sub;
+  final Set<String> _seenIds = {};
+  bool _initialLoaded = false;
 
   bool loading = true;
   String? error;
@@ -28,22 +33,52 @@ class NotificationController extends ChangeNotifier {
   bool notifPromo = true;
   bool notifInfo = true;
 
-  /// Mulai mendengarkan Firestore (realtime) + muat pilihan notifikasi.
+  bool _isTypeEnabled(NotificationType type) {
+    switch (type) {
+      case NotificationType.transaksi:
+        return notifTransaksi;
+      case NotificationType.promo:
+        return notifPromo;
+      case NotificationType.info:
+        return notifInfo;
+    }
+  }
+
   Future<void> start() async {
+    await LocalNotificationService.instance.init();
     _sub?.cancel();
-    _sub = _service.watch(userId).listen(
-      (list) {
-        _items = list;
-        loading = false;
-        error = null;
-        notifyListeners();
-      },
-      onError: (Object e) {
-        loading = false;
-        error = 'Gagal memuat notifikasi';
-        notifyListeners();
-      },
-    );
+    _sub = _service
+        .watch(userId)
+        .listen(
+          (list) {
+            if (!_initialLoaded) {
+              _seenIds.addAll(list.map((e) => e.id));
+              _initialLoaded = true;
+            } else {
+              for (final item in list) {
+                if (_seenIds.add(item.id) &&
+                    !item.isRead &&
+                    _isTypeEnabled(item.type)) {
+                  LocalNotificationService.instance.show(
+                    idKey: item.id,
+                    title: item.title,
+                    body: item.message,
+                  );
+                  onIncoming?.call(item);
+                }
+              }
+            }
+            _items = list;
+            loading = false;
+            error = null;
+            notifyListeners();
+          },
+          onError: (Object e) {
+            loading = false;
+            error = 'Gagal memuat notifikasi';
+            notifyListeners();
+          },
+        );
 
     try {
       final data = await _settings.getUser(userId);
@@ -64,22 +99,10 @@ class NotificationController extends ChangeNotifier {
   }
 
   List<NotificationModel> get items {
-    return _items.where((n) {
-      switch (n.type) {
-        case NotificationType.transaksi:
-          return notifTransaksi;
-        case NotificationType.promo:
-          return notifPromo;
-        case NotificationType.info:
-          return notifInfo;
-      }
-    }).toList();
+    return _items.where((n) => _isTypeEnabled(n.type)).toList();
   }
 
   int get unreadCount => items.where((n) => !n.isRead).length;
-
-  // Perubahan ditampilkan dulu (optimistic), lalu dikirim ke Firestore.
-  // Stream akan menyamakan lagi dengan data server.
 
   Future<void> markAsRead(String id) async {
     final i = _items.indexWhere((n) => n.id == id);
@@ -98,8 +121,6 @@ class NotificationController extends ChangeNotifier {
   }
 
   Future<void> delete(String id) async {
-    // Harus langsung hilang dari list: Dismissible menuntut itemnya sudah
-    // tidak ada di tree begitu onDismissed selesai.
     _items.removeWhere((n) => n.id == id);
     notifyListeners();
     await _jalankan(() => _service.delete(userId, id));

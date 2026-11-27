@@ -1,19 +1,98 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
-    match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2026, 12, 15);
+    function signedIn() { return request.auth != null; }
+    function owner(uid) { return signedIn() && request.auth.uid == uid; }
+    function isAdmin() {
+      return signedIn() && request.auth.uid in [
+        'pujv8wh6fmVkVsCTqylwIraeeXB3',
+        '32lwk7MOJkYXIJWnZucZpPrWU9u1',
+        'M3YKpl63h0SVwo91DbjXAPzIPtH3'
+      ];
     }
+
+    match /users/{uid} {
+      allow get: if owner(uid) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if owner(uid)
+        && request.resource.data.verificationStatus == 'pending'
+        && request.resource.data.isVerified == false;
+      allow delete: if false;
+
+      allow update: if owner(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'nama', 'namaDepan', 'namaBelakang', 'email', 'phone', 'alamat', 'foto', 'settings',
+          'tglLahir', 'gender', 'kewarganegaraan', 'updatedAt'
+        ]);
+      allow update: if signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['saldo'])
+        && request.resource.data.saldo is number
+        && request.resource.data.saldo >= 0
+        && ((owner(uid) && request.resource.data.saldo <= resource.data.saldo)
+          || (!owner(uid) && request.resource.data.saldo > resource.data.saldo));
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'saldo', 'verificationStatus', 'isVerified', 'verifiedAt', 'verifiedBy'
+        ]);
+
+      match /mutasi/{id} {
+        allow read: if owner(uid) || isAdmin();
+        allow create: if signedIn();
+        allow update, delete: if false;
+      }
+      match /referensi/{id} { allow read, write: if owner(uid); }
+      match /notifications/{id} {
+        allow read, delete: if owner(uid);
+        allow update: if owner(uid) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+        allow create: if signedIn();
+      }
+      match /login_activity/{id} {
+        allow read: if owner(uid) || isAdmin();
+        allow create: if owner(uid);
+        allow update, delete: if owner(uid);
+      }
+    }
+
+    match /rekening_index/{rekening} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if owner(request.resource.data.uid);
+      allow update, delete: if false;
+    }
+
+    match /topup_requests/{requestId} {
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.amount is int
+        && request.resource.data.amount >= 50000
+        && request.resource.data.amount <= 1000000;
+      allow get, list: if signedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt', 'reviewedBy']);
+      allow delete: if false;
+    }
+
+
+    match /news/{newsId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+    match /promos/{promoId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+    match /flazz_cards/{cardId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.saldo is int
+        && request.resource.data.saldo >= 0;
+      allow update: if signedIn()
+        && (!('ownerUid' in resource.data) || resource.data.ownerUid == request.auth.uid)
+        && request.resource.data.saldo is int
+        && request.resource.data.saldo >= 0;
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+    }
+    match /{document=**} { allow read, write: if false; }
   }
 }

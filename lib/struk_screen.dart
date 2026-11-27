@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'app_style.dart';
 import 'riwayat_transaksi.dart';
 
-/// Warna dan ikon untuk satu status transaksi.
 class _GayaStatus {
   const _GayaStatus(this.warna, this.latar, this.ikon);
 
@@ -34,7 +33,6 @@ class _GayaStatus {
   }
 }
 
-/// Label kecil berwarna: Terkirim / Diterima / Diproses / Gagal.
 class LencanaStatus extends StatelessWidget {
   const LencanaStatus({super.key, required this.transaksi});
 
@@ -61,14 +59,11 @@ class LencanaStatus extends StatelessWidget {
   }
 }
 
-/// Bukti transaksi. Dipakai setelah pembayaran dan saat membuka satu
-/// transaksi dari daftar status.
 class StrukScreen extends StatelessWidget {
   const StrukScreen({super.key, required this.struk, this.alasan});
 
   final RiwayatTransaksi struk;
 
-  /// Alasan kalau transaksi gagal, misal 'Saldo tidak cukup'.
   final String? alasan;
 
   String get judul {
@@ -108,7 +103,7 @@ class StrukScreen extends StatelessWidget {
     final gaya = _GayaStatus.dari(struk);
 
     return Scaffold(
-      backgroundColor: AppColors.biruMuda,
+      backgroundColor: AppColors.bg(context),
       appBar: AppBar(
         backgroundColor: AppColors.biru,
         foregroundColor: Colors.white,
@@ -122,8 +117,9 @@ class StrukScreen extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.card(context),
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border(context)),
               ),
               child: Column(
                 children: [

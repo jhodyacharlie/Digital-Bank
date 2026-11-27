@@ -1,253 +1,191 @@
-import 'dart:convert';
+import 'dart:async';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:crypto/crypto.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
+
+import 'models/notification_model.dart';
+import 'services/notification_service.dart';
+import 'admin/admin_service.dart';
 
 class RegisterException implements Exception {
   RegisterException(this.pesan);
   final String pesan;
+
+  @override
+  String toString() => pesan;
 }
 
 class UserService {
-  final CollectionReference users = FirebaseFirestore.instance.collection(
-    'users',
-  );
+  UserService({this._firestore, FirebaseAuth? auth}) : _firebaseAuth = auth;
 
-  String hashPin(String pin) {
-    return sha256.convert(utf8.encode(pin)).toString();
-  }
+  FirebaseFirestore? _firestore;
+  FirebaseAuth? _firebaseAuth;
 
-  Future<void> seedUsers() async {
-    final cek = await users.limit(1).get();
-    if (cek.docs.isNotEmpty) return;
+  FirebaseFirestore get _db => _firestore ??= FirebaseFirestore.instance;
+  FirebaseAuth get _auth => _firebaseAuth ??= FirebaseAuth.instance;
 
-    final dataContoh = [
-      {
-        'id': 'budi',
-        'nama': 'Budi Santoso',
-        'email': 'budi@digeboy.com',
-        'phone': '081234567890',
-        'pin': '123456',
-        'saldo': 15000000,
-      },
-      {
-        'id': 'siti',
-        'nama': 'Siti Aminah',
-        'email': 'siti@digeboy.com',
-        'phone': '081298765432',
-        'pin': '654321',
-        'saldo': 8500000,
-      },
-      {
-        'id': 'andi',
-        'nama': 'Andi Pratama',
-        'email': 'andi@digeboy.com',
-        'phone': '085711112222',
-        'pin': '246810',
-        'saldo': 2250000,
-      },
-    ];
+  CollectionReference<Map<String, dynamic>> get _users =>
+      _db.collection('users');
 
-    for (final u in dataContoh) {
-      await users.doc(u['id'] as String).set({
-        'nama': u['nama'],
-        'email': u['email'],
-        'phone': u['phone'],
-        'pin': hashPin(u['pin'] as String),
-        'saldo': u['saldo'],
-      });
-    }
-  }
+  CollectionReference<Map<String, dynamic>> get _rekeningIndex =>
+      _db.collection('rekening_index');
 
-  Future<Map<String, dynamic>?> findUser(String input) async {
-    input = input.trim().toLowerCase().replaceAll(' ', '');
-    final field = input.contains('@') ? 'email' : 'phone';
-
-    final hasil = await users.where(field, isEqualTo: input).limit(1).get();
-    if (hasil.docs.isEmpty) return null;
-
-    final doc = hasil.docs.first;
-    final data = doc.data() as Map<String, dynamic>;
-    data['id'] = doc.id;
-    return data;
-  }
-
-  Future<Map<String, dynamic>?> login(String input, String pin) async {
-    final user = await findUser(input);
-    if (user == null) return null;
-    if (user['pin'] != hashPin(pin)) return null;
-    return user;
-  }
-
-  Future<String> createResetCode(String userId) async {
-    final kode = (100000 + Random().nextInt(900000)).toString();
-    final batas = DateTime.now().add(const Duration(minutes: 5));
-
-    await users.doc(userId).update({
-      'resetCode': kode,
-      'resetExpired': batas.millisecondsSinceEpoch,
-    });
-    return kode;
-  }
-
-  Future<bool> checkResetCode(String userId, String kode) async {
-    final doc = await users.doc(userId).get();
-    final data = doc.data() as Map<String, dynamic>;
-
-    final kodeAsli = data['resetCode'];
-    final batas = data['resetExpired'] ?? 0;
-
-    if (kodeAsli == null) return false;
-    if (DateTime.now().millisecondsSinceEpoch > batas) return false;
-    return kodeAsli == kode;
-  }
-
-  Future<void> changePin(String userId, String pinBaru) async {
-    await users.doc(userId).update({
-      'pin': hashPin(pinBaru),
-      'resetCode': FieldValue.delete(),
-      'resetExpired': FieldValue.delete(),
-    });
-  }
-
-  Future<void> simpanFoto(String userId, String fotoBase64) async {
-    await users.doc(userId).update({'foto': fotoBase64});
-  }
-
-  Future<Map<String, dynamic>?> getUser(String id) async {
-    final doc = await users.doc(id).get();
-    if (!doc.exists) return null;
-    final data = doc.data() as Map<String, dynamic>;
-    data['id'] = doc.id;
-    return data;
-  }
-
-  Future<Map<String, dynamic>?> findByRekening(String rekening) async {
-    final hasil = await users
-        .where('rekening', isEqualTo: rekening)
-        .limit(1)
-        .get();
-    if (hasil.docs.isEmpty) return null;
-    final doc = hasil.docs.first;
-    final data = doc.data() as Map<String, dynamic>;
-    data['id'] = doc.id;
-    return data;
-  }
-
-  Future<String> ambilRekening(Map<String, dynamic> user) async {
-    final ada = user['rekening'];
-    if (ada != null) return ada as String;
-
-    final baru = (1000000000 + Random().nextInt(900000000)).toString();
-    await users.doc(user['id']).update({'rekening': baru});
-    user['rekening'] = baru;
-    return baru;
-  }
-
-  Future<String?> transfer(String dariId, String keId, int nominal) {
-    return FirebaseFirestore.instance.runTransaction<String?>((trx) async {
-      if (nominal <= 0) return 'Nominal harus lebih dari 0';
-      if (dariId == keId) return 'Tidak bisa transfer ke rekening sendiri';
-
-      final dariRef = users.doc(dariId);
-      final keRef = users.doc(keId);
-
-      final dari = await trx.get(dariRef);
-      final ke = await trx.get(keRef);
-      if (!dari.exists || !ke.exists) return 'Rekening tidak ditemukan';
-
-      final dataDari = dari.data() as Map<String, dynamic>;
-      final dataKe = ke.data() as Map<String, dynamic>;
-      final saldoDari = (dataDari['saldo'] as num?)?.toInt() ?? 0;
-      final saldoKe = (dataKe['saldo'] as num?)?.toInt() ?? 0;
-
-      if (saldoDari < nominal) return 'Saldo tidak cukup';
-
-      final mutasiDari = dariRef.collection('mutasi').doc();
-      final idTransaksi = 'TRX${mutasiDari.id}';
-      final mutasiKe = keRef.collection('mutasi').doc(idTransaksi);
-      final notifikasiDari = dariRef.collection('notifications').doc();
-      final notifikasiKe = keRef.collection('notifications').doc();
-      final tanggal = FieldValue.serverTimestamp();
-
-      trx.update(dariRef, {'saldo': saldoDari - nominal});
-      trx.update(keRef, {'saldo': saldoKe + nominal});
-      trx.set(mutasiDari, {
-        'idTransaksi': idTransaksi,
-        'tanggal': tanggal,
-        'tipe': 'debit',
-        'nominal': nominal,
-        'nama': dataKe['nama'] ?? '-',
-        'berita': 'Transfer QRIS',
-        'status': 'Berhasil',
-        'jenis': 'Transfer QRIS',
-        'rekeningLawan': dataKe['rekening'] ?? '-',
-      });
-      trx.set(mutasiKe, {
-        'idTransaksi': idTransaksi,
-        'tanggal': tanggal,
-        'tipe': 'kredit',
-        'nominal': nominal,
-        'nama': dataDari['nama'] ?? '-',
-        'berita': 'Transfer QRIS',
-        'status': 'Berhasil',
-        'jenis': 'Transfer QRIS',
-        'rekeningLawan': dataDari['rekening'] ?? '-',
-      });
-      trx.set(notifikasiDari, {
-        'title': 'Transfer Berhasil',
-        'message':
-            'Transfer Rp$nominal ke ${dataKe['nama'] ?? 'penerima'} berhasil.',
-        'type': 'transaksi',
-        'isRead': false,
-        'tanggal': tanggal,
-      });
-      trx.set(notifikasiKe, {
-        'title': 'Dana Diterima',
-        'message':
-            'Anda menerima transfer Rp$nominal dari ${dataDari['nama'] ?? 'pengirim'}.',
-        'type': 'transaksi',
-        'isRead': false,
-        'tanggal': tanggal,
-      });
-      return null;
-    });
-  }
-
-  Future<bool> cekPin(String userId, String pin) async {
-    final doc = await users.doc(userId).get();
-    final data = doc.data() as Map<String, dynamic>;
-    return data['pin'] == hashPin(pin);
-  }
-
-  Future<void> updateProfil(String userId, Map<String, dynamic> data) async {
-    await users.doc(userId).update(data);
-  }
+  DocumentReference<Map<String, dynamic>> _userRef(String uid) =>
+      _users.doc(uid);
 
   static String normalisasiPhone(String input) {
-    var p = input.trim().replaceAll(RegExp(r'[\s\-().]'), '');
-    if (p.startsWith('+62')) {
-      p = '0${p.substring(3)}';
-    } else if (p.startsWith('62')) {
-      p = '0${p.substring(2)}';
+    var phone = input.trim().replaceAll(RegExp(r'[\s\-().]'), '');
+    if (phone.startsWith('+62')) {
+      phone = '0${phone.substring(3)}';
+    } else if (phone.startsWith('62')) {
+      phone = '0${phone.substring(2)}';
     }
-    return p;
+    return phone;
   }
 
-  Future<String> _buatUserId() async {
-    while (true) {
-      final id = 'DGB${1000000 + Random().nextInt(9000000)}';
-      final ada = await users.doc(id).get();
-      if (!ada.exists) return id;
+  static String _randomSecretPassword([String prefix = 'Tmp']) {
+    final rng = Random.secure();
+    final hex = List.generate(
+      12,
+      (_) => rng.nextInt(256).toRadixString(16).padLeft(2, '0'),
+    ).join();
+    return '$prefix#$hex!Aa1';
+  }
+
+  Future<Map<String, dynamic>> register({
+    required String namaDepan,
+    required String namaBelakang,
+    required String email,
+    required String phone,
+    required DateTime tanggalLahir,
+    required String gender,
+    required String alamat,
+    required String kewarganegaraan,
+  }) async {
+    final emailBersih = email.trim().toLowerCase();
+    final phoneBersih = normalisasiPhone(phone);
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(emailBersih)) {
+      throw RegisterException('Format email tidak valid');
     }
+    if (!RegExp(r'^08\d{8,11}$').hasMatch(phoneBersih)) {
+      throw RegisterException('Nomor HP tidak valid');
+    }
+
+    if (_auth.currentUser != null) {
+      await _auth.signOut();
+    }
+
+    final sementara = _randomSecretPassword();
+
+    UserCredential cred;
+    try {
+      cred = await _auth.createUserWithEmailAndPassword(
+        email: emailBersih,
+        password: sementara,
+      );
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case 'email-already-in-use':
+          throw RegisterException(
+            'Email sudah terdaftar. Jika belum selesai verifikasi sebelumnya, coba Lupa PIN atau gunakan email lain.',
+          );
+        case 'invalid-email':
+          throw RegisterException('Format email tidak valid');
+        case 'weak-password':
+          throw RegisterException(
+            'Kebijakan password Firebase Auth menolak password sementara (${e.message ?? e.code})',
+          );
+        case 'network-request-failed':
+          throw RegisterException(
+            'Gagal terhubung ke server Firebase. Periksa koneksi internet.',
+          );
+        case 'operation-not-allowed':
+          throw RegisterException(
+            'Login Email/Password belum diaktifkan di Firebase Console',
+          );
+        case 'too-many-requests':
+          throw RegisterException(
+            'Terlalu banyak percobaan pendaftaran. Coba lagi beberapa menit lagi.',
+          );
+        case 'app-not-authorized':
+        case 'invalid-app-credential':
+        case 'configuration-not-found':
+          throw RegisterException(
+            'Konfigurasi Firebase Auth belum lengkap (${e.code}). Periksa SHA-1 / Firebase Console.',
+          );
+        default:
+          throw RegisterException(
+            'Pendaftaran gagal (${e.code}): ${e.message ?? ''}',
+          );
+      }
+    }
+
+    var verificationSent = false;
+    String? verificationError;
+    try {
+      await _auth.setLanguageCode('id');
+      await cred.user!.sendEmailVerification();
+      verificationSent = true;
+    } on FirebaseAuthException catch (e) {
+      verificationError = '${e.code}: ${e.message ?? 'gagal mengirim email'}';
+      debugPrint('sendEmailVerification error: $verificationError');
+    } catch (e) {
+      verificationError = e.toString();
+      debugPrint('sendEmailVerification error: $verificationError');
+    }
+
+    final depan = namaDepan.trim();
+    final belakang = namaBelakang.trim();
+    return {
+      'uid': cred.user!.uid,
+      'namaDepan': depan,
+      'namaBelakang': belakang,
+      'nama': '$depan $belakang'.trim(),
+      'email': emailBersih,
+      'phone': phoneBersih,
+      'tanggalLahirMillis': tanggalLahir.millisecondsSinceEpoch,
+      'gender': gender,
+      'alamat': alamat.trim(),
+      'kewarganegaraan': kewarganegaraan.trim(),
+      'verificationSent': verificationSent,
+      'verificationError': ?verificationError,
+    };
+  }
+
+  Future<void> batalkanPendaftaranSementara() async {
+    final u = _auth.currentUser;
+    if (u == null) return;
+    try {
+      await u.delete();
+    } catch (_) {
+      await _auth.signOut();
+    }
+  }
+
+  Future<void> kirimUlangVerifikasiEmail() async {
+    final u = _auth.currentUser;
+    if (u == null) throw StateError('Belum ada sesi pendaftaran aktif');
+    await u.sendEmailVerification();
+  }
+
+  Future<bool> cekEmailTerverifikasi() async {
+    final u = _auth.currentUser;
+    if (u == null) return false;
+    try {
+      await u.reload();
+    } catch (_) {
+      return false;
+    }
+    return _auth.currentUser?.emailVerified ?? false;
   }
 
   Future<String> _buatRekening() async {
     while (true) {
       final no = (1000000000 + Random().nextInt(900000000)).toString();
-      final ada = await users.where('rekening', isEqualTo: no).limit(1).get();
-      if (ada.docs.isEmpty) return no;
+      final ada = await _rekeningIndex.doc(no).get();
+      if (!ada.exists) return no;
     }
   }
 
@@ -269,65 +207,550 @@ class UserService {
     return '${bulan[d.month - 1]} ${d.year}';
   }
 
-  Future<Map<String, dynamic>> register({
-    required String namaDepan,
-    required String namaBelakang,
-    required String email,
-    required String phone,
-    required DateTime tanggalLahir,
-    required String gender,
-    required String alamat,
-    required String kewarganegaraan,
-  }) async {
-    final emailBersih = email.trim().toLowerCase();
-    final phoneBersih = normalisasiPhone(phone);
-
-    final cekEmail = await users
-        .where('email', isEqualTo: emailBersih)
-        .limit(1)
-        .get();
-    if (cekEmail.docs.isNotEmpty) {
-      throw RegisterException('Email sudah terdaftar');
+  Future<Map<String, dynamic>> registerWithPin(
+    Map<String, dynamic> profile,
+    String pin,
+  ) async {
+    final u = _auth.currentUser;
+    if (u == null || u.email != profile['email']) {
+      throw RegisterException(
+        'Sesi pendaftaran sudah berakhir, silakan daftar ulang.',
+      );
     }
-    final cekPhone = await users
-        .where('phone', isEqualTo: phoneBersih)
-        .limit(1)
-        .get();
-    if (cekPhone.docs.isNotEmpty) {
-      throw RegisterException('Nomor HP sudah terdaftar');
+    if (!(u.emailVerified)) {
+      throw RegisterException('Email belum diverifikasi.');
     }
 
-    final id = await _buatUserId();
+    try {
+      await u.updatePassword(pin);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        throw RegisterException(
+          'Sesi terlalu lama, silakan daftar ulang dari awal.',
+        );
+      }
+      throw RegisterException('Gagal menyimpan PIN (${e.code})');
+    }
+
     final rekening = await _buatRekening();
     final sekarang = DateTime.now();
-    final depan = namaDepan.trim();
-    final belakang = namaBelakang.trim();
-
     final data = <String, dynamic>{
-      'namaDepan': depan,
-      'namaBelakang': belakang,
-      'nama': '$depan $belakang',
-      'email': emailBersih,
-      'phone': phoneBersih,
-      'tanggalLahir': Timestamp.fromDate(tanggalLahir),
-      'gender': gender,
-      'alamat': alamat.trim(),
-      'kewarganegaraan': kewarganegaraan.trim(),
+      'namaDepan': profile['namaDepan'],
+      'namaBelakang': profile['namaBelakang'],
+      'nama': profile['nama'],
+      'email': profile['email'],
+      'phone': profile['phone'],
+      'tglLahir': profile['tanggalLahirMillis'],
+      'gender': profile['gender'],
+      'alamat': profile['alamat'],
+      'kewarganegaraan': profile['kewarganegaraan'],
       'saldo': 0,
+      'verificationStatus': 'pending',
+      'isVerified': false,
       'rekening': rekening,
       'tipeRekening': 'Savings',
       'cabang': 'KCU Jakarta',
       'memberSince': _bulanTahun(sekarang),
-      'accountStatus': 'pending_verification',
-      'isVerified': false,
-      'registrationCompleted': false,
       'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
     };
 
-    // Tidak menyimpan password/PIN di Firestore.
-    await users.doc(id).set(data);
-    data['id'] = id;
+    final batch = _db.batch();
+    batch.set(_userRef(u.uid), data);
+    batch.set(_rekeningIndex.doc(rekening), {
+      'uid': u.uid,
+      'nama': profile['nama'],
+    });
+    await batch.commit();
+
+    data['id'] = u.uid;
     return data;
+  }
+
+  Future<Map<String, dynamic>?> login(String email, String pin) async {
+    final emailBersih = email.trim().toLowerCase();
+    UserCredential cred;
+    try {
+      cred = await _auth.signInWithEmailAndPassword(
+        email: emailBersih,
+        password: pin,
+      );
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'network-request-failed') rethrow;
+      return null;
+    }
+    final uid = cred.user!.uid;
+    if (AdminService.masterUids.contains(uid)) {
+      return {
+        'id': uid,
+        'nama': 'Admin Master',
+        'email': cred.user!.email ?? emailBersih,
+        'saldo': 0,
+        'isAdmin': true,
+      };
+    }
+    final profile = await getUser(uid);
+    if (profile == null) return null;
+    final status = (profile['verificationStatus'] ?? 'approved').toString();
+    if (status == 'pending')
+      throw RegisterException('Akun kamu masih menunggu verifikasi admin.');
+    if (status == 'rejected')
+      throw RegisterException(
+        'Pendaftaran akun belum disetujui. Silakan hubungi admin.',
+      );
+    return profile;
+  }
+
+  Future<Map<String, dynamic>?> getUser(String uid) async {
+    final snap = await _userRef(uid).get();
+    final data = snap.data();
+    if (data == null) return null;
+    data['id'] = snap.id;
+    return data;
+  }
+
+  Future<Map<String, dynamic>?> getCurrentUser() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return null;
+    return getUser(uid);
+  }
+
+  Future<void> recordLoginActivity() async {
+    final u = _auth.currentUser;
+    if (u == null) return;
+    await _userRef(u.uid).collection('login_activity').add({
+      'email': u.email ?? '',
+      'platform': 'Flutter app',
+      'createdAt': FieldValue.serverTimestamp(),
+      'deviceLabel': 'Perangkat yang digunakan',
+    });
+  }
+
+  Future<void> logout() => _auth.signOut();
+
+  Future<bool> cekPin(String uid, String pin) async {
+    final u = _auth.currentUser;
+    if (u == null || u.uid != uid || u.email == null) return false;
+    try {
+      await u.reauthenticateWithCredential(
+        EmailAuthProvider.credential(email: u.email!, password: pin),
+      );
+      return true;
+    } on FirebaseAuthException {
+      return false;
+    }
+  }
+
+  Future<void> changePin(
+    String uid,
+    String pinBaru, {
+    required String pinLama,
+  }) async {
+    final benar = await cekPin(uid, pinLama);
+    if (!benar) {
+      throw FirebaseAuthException(code: 'wrong-pin', message: 'PIN lama salah');
+    }
+    await _auth.currentUser!.updatePassword(pinBaru);
+  }
+
+  Future<bool> hasPIN(String uid) async {
+    final data = await getUser(uid);
+    return data != null;
+  }
+
+  Future<bool> deletePIN(String uid) async {
+    final u = _auth.currentUser;
+    if (u == null || u.uid != uid) return false;
+    try {
+      await u.updatePassword(_randomSecretPassword('Terkunci'));
+      return true;
+    } on FirebaseAuthException {
+      return false;
+    }
+  }
+
+  Future<void> kirimResetPin(String email) async {
+    final emailBersih = email.trim().toLowerCase();
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(emailBersih)) {
+      throw RegisterException('Format email tidak valid');
+    }
+    try {
+      await _auth.setLanguageCode('id');
+      await _auth.sendPasswordResetEmail(email: emailBersih);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'invalid-email') {
+        throw RegisterException('Format email tidak valid');
+      }
+      if (e.code == 'user-not-found') {
+        throw RegisterException('Email belum terdaftar di sistem.');
+      }
+      if (e.code == 'too-many-requests') {
+        throw RegisterException(
+          'Terlalu banyak permintaan. Coba lagi beberapa saat.',
+        );
+      }
+      if (e.code == 'network-request-failed') {
+        throw RegisterException('Tidak ada koneksi internet.');
+      }
+      if (e.code == 'operation-not-allowed') {
+        throw RegisterException(
+          'Reset password Email belum aktif di Firebase Console.',
+        );
+      }
+      throw RegisterException(
+        'Firebase Auth (${e.code}): ${e.message ?? 'gagal mengirim email'}',
+      );
+    }
+  }
+
+  Future<bool> cekKodeReset(String kode) async {
+    try {
+      await _auth.checkActionCode(kode.trim());
+      return true;
+    } on FirebaseAuthException {
+      return false;
+    }
+  }
+
+  Future<void> selesaikanResetPin(String kode, String pinBaru) async {
+    try {
+      await _auth.confirmPasswordReset(code: kode.trim(), newPassword: pinBaru);
+    } on FirebaseAuthException catch (e) {
+      throw RegisterException('Gagal menyimpan PIN baru (${e.code})');
+    }
+  }
+
+  Future<void> simpanFoto(String uid, String fotoBase64) async {
+    await _userRef(
+      uid,
+    ).update({'foto': fotoBase64, 'updatedAt': FieldValue.serverTimestamp()});
+  }
+
+  Future<void> updateProfil(String uid, Map<String, dynamic> data) async {
+    if (_auth.currentUser?.uid != uid) {
+      throw FirebaseAuthException(code: 'unauthenticated');
+    }
+    final clean = Map<String, dynamic>.from(data)
+      ..remove('id')
+      ..remove('saldo')
+      ..remove('rekening')
+      ..remove('email');
+    await _userRef(uid)
+        .update({...clean, 'updatedAt': FieldValue.serverTimestamp()});
+  }
+
+  Future<void> changeAccountEmail(String email) async {
+    final u = _auth.currentUser;
+    if (u == null) throw StateError('Belum login');
+
+    await u.verifyBeforeUpdateEmail(email.trim().toLowerCase());
+  }
+
+  Future<void> changeAccountPassword(
+    String oldPassword,
+    String newPassword,
+  ) async {
+    final u = _auth.currentUser;
+    if (u == null || u.email == null) throw StateError('Belum login');
+    await u.reauthenticateWithCredential(
+      EmailAuthProvider.credential(email: u.email!, password: oldPassword),
+    );
+    await u.updatePassword(newPassword);
+  }
+
+  Future<String> ambilRekening(Map<String, dynamic> user) async {
+    final rekening = user['rekening'];
+    if (rekening is String && rekening.isNotEmpty) return rekening;
+
+    final baru = await _buatRekening();
+    final batch = _db.batch();
+    batch.update(_userRef(user['id']), {'rekening': baru});
+    batch.set(_rekeningIndex.doc(baru), {
+      'uid': user['id'],
+      'nama': user['nama'],
+    });
+    await batch.commit();
+    user['rekening'] = baru;
+    return baru;
+  }
+
+  Future<Map<String, dynamic>?> findByRekening(String rekening) async {
+    final idx = await _rekeningIndex.doc(rekening).get();
+    final data = idx.data();
+    if (data == null) return null;
+    return {'id': data['uid'], 'nama': data['nama'], 'rekening': rekening};
+  }
+
+  Future<void> topUpSaldo(String userId, int nominal) async {
+    throw RegisterException(
+      'Top up langsung dinonaktifkan. Buat permintaan melalui Merchant atau E-Wallet.',
+    );
+  }
+
+  Future<String?> transfer(
+    String dariId,
+    String keId,
+    int nominal, {
+    required String pin,
+    required String rekeningTujuan,
+  }) async {
+    if (nominal <= 0) return 'Nominal tidak valid';
+    final benar = await cekPin(dariId, pin);
+    if (!benar) return 'PIN salah';
+    if (dariId == keId) return 'Tidak bisa transfer ke rekening sendiri';
+
+    try {
+      final dariRef = _userRef(dariId);
+      final keRef = _userRef(keId);
+      final indexRef = _rekeningIndex.doc(rekeningTujuan);
+      await _db.runTransaction((trx) async {
+        final dari = await trx.get(dariRef);
+        final index = await trx.get(indexRef);
+        if (!dari.exists || !index.exists) {
+          throw RegisterException('Akun atau rekening tujuan tidak ditemukan');
+        }
+        final indexData = index.data()!;
+        if (indexData['uid'] != keId) {
+          throw RegisterException('Data rekening tujuan tidak sesuai');
+        }
+        final saldoDari = ((dari.data()!['saldo'] as num?) ?? 0).toInt();
+        if (saldoDari < nominal) throw RegisterException('Saldo tidak cukup');
+
+        final namaPenerima = (indexData['nama'] ?? '-') as String;
+        final namaPengirim = (dari.data()!['nama'] ?? '-') as String;
+        final rekeningPengirim = (dari.data()!['rekening'] ?? '-') as String;
+        final sekarang = DateTime.now();
+        final trxId = dariRef.collection('mutasi').doc().id;
+
+        trx.update(dariRef, {'saldo': saldoDari - nominal});
+
+        trx.update(keRef, {'saldo': FieldValue.increment(nominal)});
+        trx.set(dariRef.collection('mutasi').doc(trxId), {
+          'idTransaksi': trxId,
+          'tanggal': Timestamp.fromDate(sekarang),
+          'tipe': 'debit',
+          'nominal': nominal,
+          'nama': namaPenerima,
+          'berita': 'Transfer',
+          'status': 'Berhasil',
+          'jenis': 'Transfer',
+          'rekeningLawan': rekeningTujuan,
+        });
+        trx.set(keRef.collection('mutasi').doc(trxId), {
+          'idTransaksi': trxId,
+          'tanggal': Timestamp.fromDate(sekarang),
+          'tipe': 'kredit',
+          'nominal': nominal,
+          'nama': namaPengirim,
+          'berita': 'Transfer',
+          'status': 'Berhasil',
+          'jenis': 'Transfer',
+          'rekeningLawan': rekeningPengirim,
+        });
+      });
+      await _sendTransferNotifications(dariId, keId, nominal, rekeningTujuan);
+      return null;
+    } on RegisterException catch (e) {
+      return e.pesan;
+    } on FirebaseException catch (e) {
+      return 'Firestore ${e.code}: ${e.message ?? 'transaksi ditolak'}';
+    } catch (e) {
+      return 'Transaksi gagal: $e';
+    }
+  }
+
+  String _rupiah(int nilai) {
+    final angka = nilai.toString().replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (_) => '.',
+    );
+    return 'Rp$angka';
+  }
+
+  Future<void> _sendTransferNotifications(
+    String fromUid,
+    String toUid,
+    int amount,
+    String targetAccount,
+  ) async {
+    try {
+      final from = await getUser(fromUid);
+      final index = await _rekeningIndex.doc(targetAccount).get();
+      final recipientName = (index.data()?['nama'] ?? 'Pengguna MyBCA')
+          .toString();
+      final senderName = (from?['nama'] ?? 'Pengguna MyBCA').toString();
+      final notif = NotificationService();
+      await notif.kirim(
+        userId: fromUid,
+        title: 'Transfer Berhasil',
+        message: 'Transfer ${_rupiah(amount)} ke $recipientName berhasil.',
+        type: NotificationType.transaksi,
+      );
+      await notif.kirim(
+        userId: toUid,
+        title: 'Uang Masuk',
+        message: 'Kamu menerima ${_rupiah(amount)} dari $senderName.',
+        type: NotificationType.transaksi,
+      );
+    } catch (e) {
+      debugPrint('Gagal membuat notifikasi transaksi: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> bayar(
+    String dariId,
+    String keId,
+    int nominal, {
+    required String pin,
+    required String rekeningTujuan,
+    String berita = '',
+    String jenis = 'Pembayaran',
+  }) async {
+    if (nominal <= 0) throw RegisterException('Nominal tidak valid');
+    final benar = await cekPin(dariId, pin);
+    if (!benar) throw RegisterException('PIN salah');
+    if (dariId == keId)
+      throw RegisterException('Tidak bisa membayar ke rekening sendiri');
+
+    late String trxId;
+    late String namaPenerima;
+    final dariRef = _userRef(dariId);
+    final keRef = _userRef(keId);
+    final indexRef = _rekeningIndex.doc(rekeningTujuan);
+
+    await _db.runTransaction((trx) async {
+      final dari = await trx.get(dariRef);
+      final index = await trx.get(indexRef);
+      if (!dari.exists || !index.exists) {
+        throw RegisterException('Akun atau rekening tujuan tidak ditemukan');
+      }
+      final indexData = index.data()!;
+      if (indexData['uid'] != keId) {
+        throw RegisterException('Data rekening tujuan tidak sesuai');
+      }
+      final saldoDari = ((dari.data()!['saldo'] as num?) ?? 0).toInt();
+      if (saldoDari < nominal) throw RegisterException('Saldo tidak cukup');
+
+      namaPenerima = (indexData['nama'] ?? '-') as String;
+      final namaPengirim = (dari.data()!['nama'] ?? '-') as String;
+      final rekeningPengirim = (dari.data()!['rekening'] ?? '-') as String;
+      final sekarang = DateTime.now();
+      trxId = dariRef.collection('mutasi').doc().id;
+
+      trx.update(dariRef, {'saldo': saldoDari - nominal});
+      trx.update(keRef, {'saldo': FieldValue.increment(nominal)});
+      trx.set(dariRef.collection('mutasi').doc(trxId), {
+        'idTransaksi': trxId,
+        'tanggal': Timestamp.fromDate(sekarang),
+        'tipe': 'debit',
+        'nominal': nominal,
+        'nama': namaPenerima,
+        'berita': berita,
+        'status': 'Berhasil',
+        'jenis': jenis,
+        'rekeningLawan': rekeningTujuan,
+      });
+      trx.set(keRef.collection('mutasi').doc(trxId), {
+        'idTransaksi': trxId,
+        'tanggal': Timestamp.fromDate(sekarang),
+        'tipe': 'kredit',
+        'nominal': nominal,
+        'nama': namaPengirim,
+        'berita': berita,
+        'status': 'Berhasil',
+        'jenis': jenis,
+        'rekeningLawan': rekeningPengirim,
+      });
+    });
+
+    await _sendTransferNotifications(dariId, keId, nominal, rekeningTujuan);
+    return {'id': trxId, 'nama': namaPenerima, 'rekeningLawan': rekeningTujuan};
+  }
+
+  Future<String?> _potongSaldo(
+    String uid,
+    int nominal, {
+    required String pin,
+    required String jenis,
+    required String berita,
+    String rekeningLawan = '-',
+  }) async {
+    final benar = await cekPin(uid, pin);
+    if (!benar) return 'PIN salah';
+    if (nominal <= 0) return 'Nominal tidak valid';
+
+    try {
+      await _db.runTransaction((trx) async {
+        final ref = _userRef(uid);
+        final snap = await trx.get(ref);
+        if (!snap.exists) throw RegisterException('Akun tidak ditemukan');
+
+        final saldo = ((snap.data()!['saldo'] as num?) ?? 0).toInt();
+        if (saldo < nominal) throw RegisterException('Saldo tidak cukup');
+
+        final sekarang = DateTime.now();
+        final trxId = ref.collection('mutasi').doc().id;
+
+        trx.update(ref, {'saldo': saldo - nominal});
+        trx.set(ref.collection('mutasi').doc(trxId), {
+          'idTransaksi': trxId,
+          'tanggal': Timestamp.fromDate(sekarang),
+          'tipe': 'debit',
+          'nominal': nominal,
+          'nama': jenis,
+          'berita': berita,
+          'status': 'Berhasil',
+          'jenis': jenis,
+          'rekeningLawan': rekeningLawan,
+        });
+      });
+      unawaited(() async {
+        try {
+          await NotificationService().kirim(
+            userId: uid,
+            title: jenis == 'Tarik Tunai'
+                ? 'Tarik Tunai Berhasil'
+                : 'Pembelian Berhasil',
+            message: '$berita • ${_rupiah(nominal)} berhasil diproses.',
+            type: NotificationType.transaksi,
+          );
+        } catch (_) {}
+      }());
+      return null;
+    } on RegisterException catch (e) {
+      return e.pesan;
+    } catch (e) {
+      return 'Transaksi gagal, coba lagi';
+    }
+  }
+
+  Future<String?> tarikTunai(
+    String uid,
+    int nominal, {
+    required String pin,
+    required String metode,
+  }) {
+    return _potongSaldo(
+      uid,
+      nominal,
+      pin: pin,
+      jenis: 'Tarik Tunai',
+      berita: 'Tarik tunai via $metode',
+    );
+  }
+
+  Future<String?> belanjaProduk(
+    String uid,
+    int nominal, {
+    required String pin,
+    required String namaProduk,
+    required String tujuan,
+  }) {
+    return _potongSaldo(
+      uid,
+      nominal,
+      pin: pin,
+      jenis: 'Pembelian',
+      berita: '$namaProduk • $tujuan',
+    );
   }
 }

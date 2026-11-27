@@ -1,16 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Satu transaksi mutasi.
-/// Path Firestore: users/{userId}/mutasi/{id}
 class MutasiTransaction {
-  final String id; // id dokumen
-  final String idTransaksi; // contoh: TRX17956000001
+  final String id;
+  final String idTransaksi;
   final DateTime tanggal;
-  final String tipe; // 'kredit' (uang masuk) atau 'debit' (uang keluar)
+  final String tipe;
   final int nominal;
-  final String nama; // pengirim / penerima
+  final String nama;
   final String berita;
-  final String status; // 'Berhasil', 'Pending', 'Gagal'
+  final String status;
 
   const MutasiTransaction({
     required this.id,
@@ -42,7 +40,6 @@ class MutasiTransaction {
   }
 }
 
-/// Informasi rekening milik user (diambil dari dokumen users/{userId}).
 class MutasiProfile {
   final String nama;
   final String noRekening;

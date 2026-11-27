@@ -19,7 +19,6 @@ class _MutasiData {
 class MutasiPage extends StatefulWidget {
   const MutasiPage({super.key, required this.userId});
 
-  /// ID dokumen user di koleksi `users` (contoh: "andi").
   final String userId;
 
   @override
@@ -59,12 +58,9 @@ class _MutasiPageState extends State<MutasiPage> {
     setState(() => _future = f);
     try {
       await f;
-    } catch (_) {
-      // error ditampilkan oleh FutureBuilder
-    }
+    } catch (_) {}
   }
 
-  // ---------------------------------------------------------------- filter
   List<MutasiTransaction> _applyFilter(List<MutasiTransaction> all) {
     final q = _query.trim().toLowerCase();
     return all.where((t) {
@@ -122,7 +118,6 @@ class _MutasiPageState extends State<MutasiPage> {
     if (picked != null) setState(() => _range = picked);
   }
 
-  // ------------------------------------------------------------- actions
   void _snack(String msg, {bool error = false}) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -149,16 +144,6 @@ class _MutasiPageState extends State<MutasiPage> {
       );
     } catch (e) {
       _snack('Gagal membuat PDF: $e', error: true);
-    }
-  }
-
-  Future<void> _seed() async {
-    try {
-      await _service.seedDummy(widget.userId);
-      _snack('Data contoh ditambahkan');
-      await _refresh();
-    } catch (e) {
-      _snack('Gagal menambah data: $e', error: true);
     }
   }
 
@@ -194,7 +179,6 @@ Status       : ${t.status}
     );
   }
 
-  // --------------------------------------------------------------- build
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<_MutasiData>(
@@ -222,33 +206,10 @@ Status       : ${t.status}
                 icon: const Icon(Icons.refresh_rounded),
                 onPressed: _refresh,
               ),
-              PopupMenuButton<String>(
-                color: MutasiColors.background,
-                onSelected: (v) {
-                  if (v == 'pdf' && data != null) _downloadPdf(data);
-                  if (v == 'seed') _seed();
-                },
-                itemBuilder: (_) => [
-                  PopupMenuItem(
-                    value: 'pdf',
-                    enabled: data != null,
-                    child: const ListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(Icons.picture_as_pdf_outlined),
-                      title: Text('Unduh PDF'),
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'seed',
-                    child: ListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(Icons.data_saver_on_outlined),
-                      title: Text('Tambah data contoh'),
-                    ),
-                  ),
-                ],
+              IconButton(
+                tooltip: 'Unduh PDF',
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                onPressed: data == null ? null : () => _downloadPdf(data),
               ),
             ],
           ),
@@ -342,7 +303,7 @@ Status       : ${t.status}
             ),
           ),
           const SizedBox(height: 12),
-          // Filter tanggal
+
           InkWell(
             borderRadius: BorderRadius.circular(12),
             onTap: _pickRange,
@@ -389,7 +350,7 @@ Status       : ${t.status}
             ),
           ),
           const SizedBox(height: 12),
-          // Filter jenis transaksi
+
           Wrap(
             spacing: 8,
             children: [
@@ -428,7 +389,7 @@ Status       : ${t.status}
         const _InfoState(
           icon: Icons.receipt_long_outlined,
           title: 'Belum ada transaksi',
-          message: 'Riwayat mutasi akan muncul di sini.\nUntuk mencoba, pilih menu titik tiga > "Tambah data contoh".',
+          message: 'Riwayat mutasi akan muncul di sini setelah kamu melakukan transaksi, seperti transfer atau pembayaran.',
         ),
       ];
     }
@@ -477,9 +438,6 @@ Status       : ${t.status}
   }
 }
 
-// ===========================================================================
-// Kartu informasi rekening + saldo
-// ===========================================================================
 class _AccountCard extends StatelessWidget {
   const _AccountCard({
     required this.profile,
@@ -556,9 +514,6 @@ class _AccountCard extends StatelessWidget {
   }
 }
 
-// ===========================================================================
-// Ringkasan total masuk / keluar
-// ===========================================================================
 class _SummaryRow extends StatelessWidget {
   const _SummaryRow({required this.masuk, required this.keluar});
   final int masuk;
@@ -612,9 +567,6 @@ class _SummaryRow extends StatelessWidget {
   }
 }
 
-// ===========================================================================
-// Satu baris transaksi
-// ===========================================================================
 Color _statusColor(String status) {
   switch (status.toLowerCase()) {
     case 'berhasil':
@@ -722,9 +674,6 @@ class _TransactionTile extends StatelessWidget {
   }
 }
 
-// ===========================================================================
-// Detail transaksi
-// ===========================================================================
 class _DetailSheet extends StatelessWidget {
   const _DetailSheet({
     required this.t,
@@ -898,9 +847,6 @@ class _DetailSheet extends StatelessWidget {
   }
 }
 
-// ===========================================================================
-// Empty / error state
-// ===========================================================================
 class _InfoState extends StatelessWidget {
   const _InfoState({
     required this.icon,

@@ -16,8 +16,6 @@ class _DataAkun {
   Akun toAkun() => Akun(id: id, nama: nama, rekening: rekening, saldo: saldo);
 }
 
-/// Implementasi di memori untuk demo dan tes. Data hilang saat app ditutup.
-/// PIN disimpan apa adanya HANYA karena ini demo.
 class MemoryTransaksiRepository implements TransaksiRepository {
   MemoryTransaksiRepository() {
     for (final a in [
@@ -34,11 +32,8 @@ class MemoryTransaksiRepository implements TransaksiRepository {
   final StreamController<void> _berubah = StreamController<void>.broadcast();
   int _urut = 0;
 
-  /// Daftar akun demo (untuk tombol ganti akun). Bukan bagian dari interface.
   List<Akun> get daftarAkun => _akun.values.map((a) => a.toAkun()).toList();
 
-  /// Stream yang langsung mengirim nilai sekarang, lalu mengirim ulang
-  /// setiap kali data berubah.
   Stream<T> _pantauPerubahan<T>(T Function() ambil) {
     late StreamController<T> pengendali;
     StreamSubscription<void>? langganan;
@@ -79,6 +74,8 @@ class MemoryTransaksiRepository implements TransaksiRepository {
     required String dariId,
     required String keId,
     required int nominal,
+    required String pin,
+    required String rekeningTujuan,
     String berita = '',
     String jenis = 'Pembayaran',
   }) async {
@@ -98,16 +95,16 @@ class MemoryTransaksiRepository implements TransaksiRepository {
     final tanggal = DateTime.now();
 
     RiwayatTransaksi sisiPengirim(String status) => RiwayatTransaksi(
-          id: id,
-          tanggal: tanggal,
-          tipe: 'debit',
-          nominal: nominal,
-          nama: ke.nama,
-          berita: berita,
-          status: status,
-          jenis: jenis,
-          rekeningLawan: ke.rekening,
-        );
+      id: id,
+      tanggal: tanggal,
+      tipe: 'debit',
+      nominal: nominal,
+      nama: ke.nama,
+      berita: berita,
+      status: status,
+      jenis: jenis,
+      rekeningLawan: ke.rekening,
+    );
 
     if (dari.saldo < nominal) {
       final gagal = sisiPengirim('Gagal');
@@ -142,9 +139,8 @@ class MemoryTransaksiRepository implements TransaksiRepository {
   @override
   Stream<List<RiwayatTransaksi>> pantau(String userId, {int batas = 100}) {
     return _pantauPerubahan(
-      () => (_riwayat[userId] ?? const <RiwayatTransaksi>[])
-          .take(batas)
-          .toList(),
+      () =>
+          (_riwayat[userId] ?? const <RiwayatTransaksi>[]).take(batas).toList(),
     );
   }
 }

@@ -13,19 +13,17 @@ class ForgotPinScreen extends StatefulWidget {
 
 class _ForgotPinScreenState extends State<ForgotPinScreen> {
   final UserService userService = UserService();
-  final TextEditingController kontakController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
   final TextEditingController kodeController = TextEditingController();
 
   int langkah = 1;
   bool loading = false;
-  Map<String, dynamic>? user;
-  String tujuan = '';
   String pinBaru = '';
   String pinPertama = '';
 
   @override
   void dispose() {
-    kontakController.dispose();
+    emailController.dispose();
     kodeController.dispose();
     super.dispose();
   }
@@ -36,78 +34,68 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
   }
 
   void kirimKode() async {
-    final input = kontakController.text.trim();
-    if (input.isEmpty) {
-      pesan('Isi email atau nomor HP dulu');
+    final email = emailController.text.trim();
+    if (email.isEmpty) {
+      pesan('Isi email dulu');
       return;
     }
 
     setState(() => loading = true);
-    String? kode;
+    String? errorMessage;
     try {
-      final hasil = await userService.findUser(input);
-      if (hasil == null) {
-        pesan('Email / nomor HP tidak terdaftar');
-      } else {
-        kode = await userService.createResetCode(hasil['id']);
-        user = hasil;
-        tujuan = input.contains('@') ? 'email' : 'nomor HP';
-      }
+      await userService.kirimResetPin(email);
     } catch (e) {
-      pesan('Gagal terhubung ke server');
+      errorMessage = e.toString().replaceFirst('RegisterException: ', '');
     }
-
     if (!mounted) return;
     setState(() => loading = false);
 
-    if (kode != null) {
-      await tampilKodeDemo(kode);
-      if (!mounted) return;
-      setState(() => langkah = 2);
+    if (errorMessage != null) {
+      pesan(errorMessage);
+      return;
     }
-  }
-
-  Future<void> tampilKodeDemo(String kode) {
-    return showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Kode dikirim ke $tujuan'),
-        content: Text(
-          'MODE DEMO: kode verifikasi kamu adalah $kode\n\n'
-          'Di aplikasi sungguhan kode dikirim lewat email atau SMS, '
-          'bukan ditampilkan di layar.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
+    setState(() => langkah = 2);
+    pesan(
+      'Permintaan diproses. Jika email terdaftar, tautan reset dikirim. Periksa Inbox, Spam, dan Promotions.',
     );
   }
 
-  // ---------- Langkah 2: cek kode ----------
+  String _ekstrakKode(String input) {
+    final raw = input.trim();
+    final uri = Uri.tryParse(raw);
+    if (uri != null && uri.queryParameters.containsKey('oobCode')) {
+      return uri.queryParameters['oobCode']!.trim();
+    }
+    final match = RegExp(r'oobCode=([^&\s]+)').firstMatch(raw);
+    if (match != null) {
+      return Uri.decodeComponent(match.group(1)!).trim();
+    }
+    return raw;
+  }
+
   void cekKode() async {
+    final kode = _ekstrakKode(kodeController.text);
+    if (kode.isEmpty) {
+      pesan('Tempelkan dulu kode atau tautan dari email');
+      return;
+    }
+    kodeController.text = kode;
+
     setState(() => loading = true);
-    bool benar = false;
+    bool valid = false;
     try {
-      benar = await userService.checkResetCode(
-        user!['id'],
-        kodeController.text.trim(),
-      );
+      valid = await userService.cekKodeReset(kode);
     } catch (e) {
-      benar = false;
+      valid = false;
     }
     if (!mounted) return;
     setState(() {
       loading = false;
-      if (benar) langkah = 3;
+      if (valid) langkah = 3;
     });
-    if (!benar) pesan('Kode salah atau sudah kadaluarsa');
+    if (!valid) pesan('Kode salah, sudah dipakai, atau sudah kedaluwarsa');
   }
 
-  // ---------- Langkah 3: PIN baru ----------
   void tambahAngka(String angka) {
     if (pinBaru.length >= 6 || loading) return;
     setState(() => pinBaru += angka);
@@ -120,7 +108,6 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
   }
 
   void cekPinBaru() async {
-    // PIN pertama selesai -> minta ketik ulang
     if (pinPertama.isEmpty) {
       setState(() {
         pinPertama = pinBaru;
@@ -129,7 +116,6 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
       return;
     }
 
-    // PIN kedua harus sama dengan yang pertama
     if (pinPertama != pinBaru) {
       pesan('PIN tidak sama, ulangi dari awal');
       setState(() {
@@ -142,7 +128,10 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
     setState(() => loading = true);
     bool berhasil = true;
     try {
-      await userService.changePin(user!['id'], pinBaru);
+      await userService.selesaikanResetPin(
+        _ekstrakKode(kodeController.text),
+        pinBaru,
+      );
     } catch (e) {
       berhasil = false;
     }
@@ -153,28 +142,32 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
       pesan('PIN baru tersimpan. Silakan login.');
       Navigator.pop(context);
     } else {
-      pesan('Gagal menyimpan PIN');
+      pesan('Gagal menyimpan PIN. Mungkin kodenya sudah kedaluwarsa.');
+      setState(() {
+        pinPertama = '';
+        pinBaru = '';
+      });
     }
   }
 
-  // ---------- Tampilan ----------
   Widget tampilanKontak() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Masukkan email atau nomor HP yang terdaftar. '
-          'Kami akan mengirim kode verifikasi ke sana.',
+          'Masukkan email akunmu. Firebase akan mengirim email berisi '
+          'tautan reset PIN ke alamat itu.',
           style: TextStyle(color: AppColors.abu),
         ),
         const SizedBox(height: 24),
         TextField(
-          controller: kontakController,
+          controller: emailController,
+          enabled: !loading,
           keyboardType: TextInputType.emailAddress,
-          decoration: inputStyle('Email atau No. HP', Icons.mail_outline),
+          decoration: inputStyle('Email', Icons.mail_outline),
         ),
         const SizedBox(height: 24),
-        TombolBiru(teks: 'Kirim Kode', onPressed: kirimKode, loading: loading),
+        TombolBiru(teks: 'Kirim Email', onPressed: kirimKode, loading: loading),
       ],
     );
   }
@@ -183,24 +176,35 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Masukkan 6 angka kode yang dikirim ke $tujuan kamu.',
-          style: const TextStyle(color: AppColors.abu),
+        const Text(
+          'Buka email reset dari Firebase (cek Inbox, Spam, atau Promotions).\n\n'
+          '• Kamu bisa mengetuk tautannya langsung untuk reset lewat browser, atau\n'
+          '• Salin tautan lengkap / nilai "oobCode=" dari email dan tempel di bawah ini untuk atur PIN 6 digit di aplikasi.',
+          style: TextStyle(color: AppColors.abu),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         TextField(
           controller: kodeController,
-          keyboardType: TextInputType.number,
-          maxLength: 6,
-          decoration: inputStyle('Kode verifikasi', Icons.lock_outline),
+          enabled: !loading,
+          decoration: inputStyle(
+            'Tautan atau oobCode dari email',
+            Icons.lock_outline,
+          ),
         ),
         const SizedBox(height: 16),
         TombolBiru(teks: 'Verifikasi', onPressed: cekKode, loading: loading),
-        Center(
-          child: TextButton(
-            onPressed: kirimKode,
-            child: const Text('Kirim ulang kode'),
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            TextButton(
+              onPressed: loading ? null : () => setState(() => langkah = 1),
+              child: const Text('Ganti email'),
+            ),
+            TextButton(
+              onPressed: loading ? null : kirimKode,
+              child: const Text('Kirim ulang email'),
+            ),
+          ],
         ),
       ],
     );
@@ -230,7 +234,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.biruMuda,
+      backgroundColor: AppColors.bg(context),
       appBar: AppBar(
         backgroundColor: AppColors.biru,
         foregroundColor: Colors.white,

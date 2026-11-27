@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'app_style.dart';
+import 'firestore_transaksi_repository.dart';
+import 'pin_konfirmasi_screen.dart';
 import 'user_service.dart';
 
 class TransferQrisScreen extends StatefulWidget {
@@ -37,9 +39,9 @@ class _TransferQrisScreenState extends State<TransferQrisScreen> {
 
   String rupiah(int angka) {
     final teks = angka.toString().replaceAllMapped(
-          RegExp(r'\B(?=(\d{3})+(?!\d))'),
-          (m) => '.',
-        );
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (m) => '.',
+    );
     return 'Rp $teks';
   }
 
@@ -71,6 +73,19 @@ class _TransferQrisScreenState extends State<TransferQrisScreen> {
     );
     if (setuju != true || !mounted) return;
 
+    final pin = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PinKonfirmasiScreen(
+          repo: FirestoreTransaksiRepository(),
+          userId: widget.pengirim['id'] as String,
+          keterangan:
+              'Transfer ${rupiah(nominal)} ke ${widget.penerima['nama']}',
+        ),
+      ),
+    );
+    if (!mounted || pin == null) return;
+
     setState(() => loading = true);
     String? error;
     try {
@@ -78,6 +93,8 @@ class _TransferQrisScreenState extends State<TransferQrisScreen> {
         widget.pengirim['id'],
         widget.penerima['id'],
         nominal,
+        pin: pin,
+        rekeningTujuan: widget.penerima['rekening'] as String,
       );
     } catch (e) {
       error = 'Gagal terhubung ke server';
@@ -112,7 +129,7 @@ class _TransferQrisScreenState extends State<TransferQrisScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.biruMuda,
+      backgroundColor: AppColors.bg(context),
       appBar: AppBar(
         backgroundColor: AppColors.biru,
         foregroundColor: Colors.white,
@@ -127,13 +144,17 @@ class _TransferQrisScreenState extends State<TransferQrisScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.card(context),
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border(context)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Penerima', style: TextStyle(color: AppColors.abu)),
+                  const Text(
+                    'Penerima',
+                    style: TextStyle(color: AppColors.abu),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     widget.penerima['nama'] as String,

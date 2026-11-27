@@ -8,7 +8,6 @@ class SettingModel {
   final bool pinEnabled;
   final bool accountProtection;
 
-  // Nama/ID/email diisi dari Firestore (users/{userId}) saat load().
   const SettingModel({
     this.name = 'Memuat...',
     this.userId = '',
@@ -20,7 +19,6 @@ class SettingModel {
     this.accountProtection = true,
   });
 
-  // copyWith = salin data lama, ganti sebagian saja
   SettingModel copyWith({
     String? name,
     String? userId,

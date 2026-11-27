@@ -4,9 +4,12 @@ import 'package:provider/provider.dart';
 
 import '../controllers/notification_controller.dart';
 import '../models/notification_model.dart';
+import '../services/locale_service.dart';
 
 class NotificationView extends StatelessWidget {
   const NotificationView({super.key});
+
+  String _t(String id, String en) => LocaleService.tr(id, en);
 
   @override
   Widget build(BuildContext context) {
@@ -17,13 +20,13 @@ class NotificationView extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: const Color(0xFF1456A5),
         foregroundColor: Colors.white,
-        title: const Text('Notifikasi'),
+        title: Text(_t('Notifikasi', 'Notifications')),
         actions: [
           TextButton(
             onPressed: c.markAllAsRead,
-            child: const Text(
-              'Tandai semua dibaca',
-              style: TextStyle(color: Colors.white, fontSize: 12),
+            child: Text(
+              _t('Tandai semua dibaca', 'Mark all read'),
+              style: const TextStyle(color: Colors.white, fontSize: 12),
             ),
           ),
         ],
@@ -47,7 +50,11 @@ class NotificationView extends StatelessWidget {
                   ),
                 Expanded(
                   child: list.isEmpty
-                      ? const Center(child: Text('Belum ada notifikasi'))
+                      ? Center(
+                          child: Text(
+                            _t('Belum ada notifikasi', 'No notifications yet'),
+                          ),
+                        )
                       : ListView.separated(
                           itemCount: list.length,
                           separatorBuilder: (_, _) => const Divider(height: 1),

@@ -111,7 +111,7 @@ class _QrisSayaScreenState extends State<QrisSayaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.biruMuda,
+      backgroundColor: AppColors.bg(context),
       appBar: AppBar(
         backgroundColor: AppColors.biru,
         foregroundColor: Colors.white,
@@ -125,8 +125,9 @@ class _QrisSayaScreenState extends State<QrisSayaScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.card(context),
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.border(context)),
               ),
               child: Center(child: isiKartu()),
             ),

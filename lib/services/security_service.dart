@@ -1,64 +1,25 @@
-import 'dart:convert';
-
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:crypto/crypto.dart';
+import '../user_service.dart';
 
 class SecurityService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final UserService _users = UserService();
+  String? lastError;
 
-  String _hashPIN(String pin) {
-    return sha256.convert(utf8.encode(pin)).toString();
-  }
-
-  Future<bool> savePIN(String userId, String pin) async {
-    if (!RegExp(r'^\d{6}$').hasMatch(pin)) {
-      return false;
-    }
-
+  Future<bool> savePIN(Map<String, dynamic> profile, String pin) async {
+    lastError = null;
+    if (!RegExp(r'^\d{6}$').hasMatch(pin)) return false;
     try {
-      final userRef = _firestore.collection('users').doc(userId);
-      final doc = await userRef.get();
-
-      if (!doc.exists) return false;
-
-      await userRef.update({
-        'pin': _hashPIN(pin),
-        // OTP di aplikasi ini hanya simulasi lokal, bukan verifikasi email/HP.
-        'otpDemoCompleted': true,
-        'isVerified': false,
-        'registrationCompleted': true,
-        'accountStatus': 'active',
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-
+      await _users.registerWithPin(profile, pin);
+      await _users.logout();
       return true;
-    } catch (e) {
+    } catch (error) {
+      lastError = error.toString().replaceFirst('Exception: ', '');
       return false;
     }
   }
 
-  Future<String?> getPIN(String userId) async {
-    final doc = await _firestore.collection('users').doc(userId).get();
+  Future<String?> getPIN(String userId) async => null;
 
-    if (!doc.exists) return null;
+  Future<bool> hasPIN(String userId) => _users.hasPIN(userId);
 
-    final data = doc.data();
-    return data?['pin'] as String?;
-  }
-
-  Future<bool> hasPIN(String userId) async {
-    final pin = await getPIN(userId);
-    return pin != null && pin.isNotEmpty;
-  }
-
-  Future<bool> deletePIN(String userId) async {
-    try {
-      await _firestore.collection('users').doc(userId).update({
-        'pin': FieldValue.delete(),
-      });
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
+  Future<bool> deletePIN(String userId) => _users.deletePIN(userId);
 }

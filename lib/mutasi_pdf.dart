@@ -5,8 +5,6 @@ import 'package:printing/printing.dart';
 import 'formatters.dart';
 import 'mutasi_model.dart';
 
-/// Membuat laporan mutasi dalam bentuk PDF lalu membuka dialog
-/// simpan / bagikan bawaan perangkat.
 Future<void> exportMutasiPdf({
   required MutasiProfile profile,
   required List<MutasiTransaction> items,
@@ -16,10 +14,12 @@ Future<void> exportMutasiPdf({
   final green = PdfColor.fromInt(0xFF16864B);
   final red = PdfColor.fromInt(0xFFD94343);
 
-  final totalMasuk =
-      items.where((e) => e.isKredit).fold<int>(0, (s, e) => s + e.nominal);
-  final totalKeluar =
-      items.where((e) => !e.isKredit).fold<int>(0, (s, e) => s + e.nominal);
+  final totalMasuk = items
+      .where((e) => e.isKredit)
+      .fold<int>(0, (s, e) => s + e.nominal);
+  final totalKeluar = items
+      .where((e) => !e.isKredit)
+      .fold<int>(0, (s, e) => s + e.nominal);
 
   final doc = pw.Document();
   doc.addPage(
@@ -27,9 +27,14 @@ Future<void> exportMutasiPdf({
       pageFormat: PdfPageFormat.a4,
       margin: const pw.EdgeInsets.all(32),
       build: (ctx) => [
-        pw.Text('MyBCA - Mutasi Rekening',
-            style: pw.TextStyle(
-                fontSize: 20, fontWeight: pw.FontWeight.bold, color: blue)),
+        pw.Text(
+          'MyBCA - Mutasi Rekening',
+          style: pw.TextStyle(
+            fontSize: 20,
+            fontWeight: pw.FontWeight.bold,
+            color: blue,
+          ),
+        ),
         pw.SizedBox(height: 12),
         pw.Text('Nama      : ${profile.nama}'),
         pw.Text('No. Rek   : ${profile.noRekening}'),
@@ -39,17 +44,20 @@ Future<void> exportMutasiPdf({
         pw.TableHelper.fromTextArray(
           headers: ['Tanggal', 'Keterangan', 'Status', 'Jumlah'],
           data: items
-              .map((e) => [
-                    '${tanggalSingkat(e.tanggal)}\n${jam(e.tanggal)}',
-                    '${e.nama}\n${e.berita}',
-                    e.status,
-                    '${e.isKredit ? '+' : '-'} ${rupiah(e.nominal)}',
-                  ])
+              .map(
+                (e) => [
+                  '${tanggalSingkat(e.tanggal)}\n${jam(e.tanggal)}',
+                  '${e.nama}\n${e.berita}',
+                  e.status,
+                  '${e.isKredit ? '+' : '-'} ${rupiah(e.nominal)}',
+                ],
+              )
               .toList(),
           headerStyle: pw.TextStyle(
-              color: PdfColors.white,
-              fontWeight: pw.FontWeight.bold,
-              fontSize: 10),
+            color: PdfColors.white,
+            fontWeight: pw.FontWeight.bold,
+            fontSize: 10,
+          ),
           headerDecoration: pw.BoxDecoration(color: blue),
           cellStyle: const pw.TextStyle(fontSize: 9),
           cellAlignments: {
@@ -58,8 +66,10 @@ Future<void> exportMutasiPdf({
             2: pw.Alignment.center,
             3: pw.Alignment.centerRight,
           },
-          cellPadding:
-              const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+          cellPadding: const pw.EdgeInsets.symmetric(
+            horizontal: 6,
+            vertical: 5,
+          ),
           oddRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
         ),
         pw.SizedBox(height: 16),
@@ -69,12 +79,20 @@ Future<void> exportMutasiPdf({
             pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.end,
               children: [
-                pw.Text('Total uang masuk : ${rupiah(totalMasuk)}',
-                    style: pw.TextStyle(
-                        color: green, fontWeight: pw.FontWeight.bold)),
-                pw.Text('Total uang keluar: ${rupiah(totalKeluar)}',
-                    style: pw.TextStyle(
-                        color: red, fontWeight: pw.FontWeight.bold)),
+                pw.Text(
+                  'Total uang masuk : ${rupiah(totalMasuk)}',
+                  style: pw.TextStyle(
+                    color: green,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.Text(
+                  'Total uang keluar: ${rupiah(totalKeluar)}',
+                  style: pw.TextStyle(
+                    color: red,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
               ],
             ),
           ],

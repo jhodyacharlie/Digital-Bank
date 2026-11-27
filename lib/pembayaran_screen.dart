@@ -8,15 +8,11 @@ import 'riwayat_transaksi.dart';
 import 'struk_screen.dart';
 import 'transaksi_repository.dart';
 
-/// Bayar ke rekening lain:
-/// isi rekening + nominal -> cek penerima -> konfirmasi -> PIN -> bukti.
-/// Pop dengan true kalau pembayaran berhasil.
 class PembayaranScreen extends StatefulWidget {
   const PembayaranScreen({super.key, required this.repo, required this.akun});
 
   final TransaksiRepository repo;
 
-  /// Akun yang membayar.
   final Akun akun;
 
   @override
@@ -113,7 +109,7 @@ class _PembayaranScreenState extends State<PembayaranScreen> {
     final lanjut = await konfirmasi(tujuan, nominal, catatan);
     if (!lanjut || !mounted) return;
 
-    final pinBenar = await Navigator.push<bool>(
+    final pin = await Navigator.push<String>(
       context,
       MaterialPageRoute(
         builder: (_) => PinKonfirmasiScreen(
@@ -124,7 +120,7 @@ class _PembayaranScreenState extends State<PembayaranScreen> {
       ),
     );
     if (!mounted) return;
-    if (pinBenar != true) {
+    if (pin == null) {
       pesan('Pembayaran dibatalkan');
       return;
     }
@@ -134,6 +130,8 @@ class _PembayaranScreenState extends State<PembayaranScreen> {
       dariId: widget.akun.id,
       keId: tujuan.id,
       nominal: nominal,
+      pin: pin,
+      rekeningTujuan: rekening,
       berita: catatan,
       jenis: 'Pembayaran',
     );
@@ -159,7 +157,7 @@ class _PembayaranScreenState extends State<PembayaranScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.biruMuda,
+      backgroundColor: AppColors.bg(context),
       appBar: AppBar(
         backgroundColor: AppColors.biru,
         foregroundColor: Colors.white,
@@ -170,12 +168,12 @@ class _PembayaranScreenState extends State<PembayaranScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Bayar ke rekening Digeboy',
+            Text(
+              'Bayar ke rekening MyBCA',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.biruTua,
+                color: AppColors.textPrimary(context),
               ),
             ),
             const SizedBox(height: 16),
@@ -187,6 +185,7 @@ class _PembayaranScreenState extends State<PembayaranScreen> {
               decoration: inputStyle(
                 'Nomor rekening tujuan',
                 Icons.account_balance_outlined,
+                context: context,
               ),
             ),
             const SizedBox(height: 16),
@@ -195,14 +194,22 @@ class _PembayaranScreenState extends State<PembayaranScreen> {
               enabled: !loading,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: inputStyle('Nominal (Rp)', Icons.payments_outlined),
+              decoration: inputStyle(
+                'Nominal (Rp)',
+                Icons.payments_outlined,
+                context: context,
+              ),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: catatanController,
               enabled: !loading,
               maxLength: 60,
-              decoration: inputStyle('Catatan (opsional)', Icons.edit_note),
+              decoration: inputStyle(
+                'Catatan (opsional)',
+                Icons.edit_note,
+                context: context,
+              ),
             ),
             const SizedBox(height: 16),
             TombolBiru(teks: 'Lanjut', onPressed: bayar, loading: loading),

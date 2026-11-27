@@ -1,13 +1,16 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_style.dart';
 import 'change_pin_screen.dart';
 import 'edit_profile_screen.dart';
+import 'login_activity_screen.dart';
 import 'login_screen.dart';
+import 'services/locale_service.dart';
+import 'services/theme_service.dart';
 import 'user_service.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -40,10 +43,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    user = widget.user;
+    user = Map<String, dynamic>.from(widget.user);
     final foto = user['foto'];
-    if (foto != null) {
-      fotoBytes = base64Decode(foto);
+    if (foto is String && foto.isNotEmpty) {
+      try {
+        fotoBytes = base64Decode(foto);
+      } catch (_) {
+        fotoBytes = null;
+      }
     }
     muatData();
   }
@@ -104,6 +111,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
 
     if (setuju != true || !mounted) return;
+    await userService.logout();
+    if (!mounted) return;
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -115,6 +124,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final data = user[kunci];
     if (data == null || data.toString().isEmpty) return cadangan;
     return data.toString();
+  }
+
+  String formatTanggalLahir() {
+    final raw = user['tglLahir'];
+    if (raw is int) {
+      final d = DateTime.fromMillisecondsSinceEpoch(raw);
+      return '${d.day.toString().padLeft(2, '0')}/'
+          '${d.month.toString().padLeft(2, '0')}/${d.year}';
+    }
+    return nilai('tglLahir', '-');
+  }
+
+  void bukaInfoDialog(String judul, String isi) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(judul),
+        content: Text(isi),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Tutup'),
+          ),
+        ],
+      ),
+    );
   }
 
   List<Widget> sisipGaris(List<Widget> items) {
@@ -147,7 +182,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget header() {
-    final nama = user['nama'] as String;
+    final nama = nilai('nama', 'Pengguna');
 
     return Container(
       width: double.infinity,
@@ -168,7 +203,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             backgroundImage: fotoBytes != null ? MemoryImage(fotoBytes!) : null,
             child: fotoBytes == null
                 ? Text(
-                    nama.substring(0, 1),
+                    nama.isNotEmpty ? nama[0].toUpperCase() : '?',
                     style: const TextStyle(
                       fontSize: 36,
                       color: AppColors.biru,
@@ -188,21 +223,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            user['email'] as String,
+            nilai('email', '-'),
             style: const TextStyle(color: Colors.white70),
           ),
           Text(
-            user['phone'] as String,
+            nilai('phone', '-'),
             style: const TextStyle(color: Colors.white70),
           ),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              pil('ID: ${user['id']}', Colors.white24),
+              pil('ID: ${user['businessId'] ?? user['id']}', Colors.white24),
               const SizedBox(width: 8),
               pil(
-                user['isVerified'] == true ? 'Verified' : 'OTP Demo',
+                user['isVerified'] == true ? 'Verified' : 'Belum Verifikasi',
                 user['isVerified'] == true
                     ? Colors.green.shade600
                     : Colors.orange.shade700,
@@ -233,18 +268,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: AppColors.card(context),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             judul,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: AppColors.biruTua,
+              color: AppColors.textPrimary(context),
             ),
           ),
           const SizedBox(height: 8),
@@ -254,27 +290,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget barisInfo(String label, String isi) {
+  Widget barisInfo(String label, String isi, {Widget? trailing}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
             flex: 4,
-            child: Text(label, style: const TextStyle(color: AppColors.abu)),
+            child: Text(
+              label,
+              style: TextStyle(color: AppColors.textSecondary(context)),
+            ),
           ),
           Expanded(
             flex: 5,
             child: Text(
               isi,
               textAlign: TextAlign.right,
-              style: const TextStyle(
-                color: AppColors.biruTua,
+              style: TextStyle(
+                color: AppColors.textPrimary(context),
                 fontWeight: FontWeight.w600,
               ),
             ),
           ),
+          if (trailing != null) ...[const SizedBox(width: 4), trailing],
         ],
       ),
     );
@@ -293,20 +333,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
           children: [
-            Icon(ikon, color: AppColors.biru),
+            Icon(ikon, color: AppColors.accent(context)),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 judul,
-                style: const TextStyle(color: AppColors.biruTua),
+                style: TextStyle(color: AppColors.textPrimary(context)),
               ),
             ),
             if (teks != null)
-              Text(teks, style: const TextStyle(color: AppColors.abu)),
+              Text(
+                teks,
+                style: TextStyle(color: AppColors.textSecondary(context)),
+              ),
             if (trailing != null)
               trailing
             else
-              const Icon(Icons.chevron_right, color: AppColors.abu),
+              Icon(
+                Icons.chevron_right,
+                color: AppColors.textSecondary(context),
+              ),
           ],
         ),
       ),
@@ -314,74 +360,180 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget bagianPersonal() {
-    return kartu('Personal Information', [
-      barisInfo('Full Name', user['nama'] as String),
-      barisInfo('Date of Birth', nilai('tglLahir', '-')),
-      barisInfo('Gender', nilai('gender', '-')),
-      barisInfo('Email Address', user['email'] as String),
-      barisInfo('Phone Number', user['phone'] as String),
-      barisInfo('Address', nilai('alamat', '-')),
-      barisInfo('Nationality', nilai('kewarganegaraan', 'Indonesia')),
+    final t = LocaleService.tr;
+    return kartu(t('Informasi Pribadi', 'Personal Information'), [
+      barisInfo(t('Nama Lengkap', 'Full Name'), nilai('nama', '-')),
+      barisInfo(t('Tanggal Lahir', 'Date of Birth'), formatTanggalLahir()),
+      barisInfo(t('Gender', 'Gender'), nilai('gender', '-')),
+      barisInfo('Email', nilai('email', '-')),
+      barisInfo(t('Nomor HP', 'Phone Number'), nilai('phone', '-')),
+      barisInfo(t('Alamat', 'Address'), nilai('alamat', '-')),
+      barisInfo(
+        t('Kewarganegaraan', 'Nationality'),
+        nilai('kewarganegaraan', 'Indonesia'),
+      ),
     ]);
   }
 
   Widget bagianRekening() {
-    return kartu('Account Information', [
-      barisInfo('Account Number', rekening),
-      barisInfo('Account Type', nilai('tipeRekening', 'Savings')),
-      barisInfo('Account Name', (user['nama'] as String).toUpperCase()),
-      barisInfo('Branch Name', nilai('cabang', 'KCU Jakarta')),
-      barisInfo('Account Status', 'Active'),
-      barisInfo('Member Since', nilai('memberSince', 'Januari 2025')),
+    final t = LocaleService.tr;
+    return kartu(t('Informasi Rekening', 'Account Information'), [
+      barisInfo(
+        t('Nomor Rekening', 'Account Number'),
+        rekening,
+        trailing: IconButton(
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+          tooltip: t('Salin nomor rekening', 'Copy account number'),
+          icon: Icon(
+            Icons.copy_rounded,
+            size: 17,
+            color: AppColors.accent(context),
+          ),
+          onPressed: () {
+            if (rekening == '-' || rekening == '...') return;
+            Clipboard.setData(ClipboardData(text: rekening));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  t(
+                    'Nomor rekening $rekening disalin',
+                    'Account number $rekening copied',
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+      barisInfo(
+        t('Tipe Rekening', 'Account Type'),
+        nilai('tipeRekening', 'Savings'),
+      ),
+      barisInfo(
+        t('Nama Pemilik', 'Account Name'),
+        nilai('nama', '-').toUpperCase(),
+      ),
+      barisInfo(t('Cabang', 'Branch Name'), nilai('cabang', 'KCU Jakarta')),
+      barisInfo(t('Status Rekening', 'Account Status'), t('Aktif', 'Active')),
+      barisInfo(
+        t('Anggota Sejak', 'Member Since'),
+        nilai('memberSince', 'Januari 2025'),
+      ),
     ]);
   }
 
   Widget bagianKeamanan() {
-    return kartu('Security & Privacy', [
+    final t = LocaleService.tr;
+    return kartu(t('Keamanan & Privasi', 'Security & Privacy'), [
       barisMenu(
         Icons.lock_outline,
-        'Change Password',
+        t('Ubah Password', 'Change Password'),
         onTap: widget.onOpenAccountSettings,
       ),
-      barisMenu(Icons.pin_outlined, 'Change PIN', onTap: gantiPin),
+      barisMenu(
+        Icons.pin_outlined,
+        t('Ubah PIN', 'Change PIN'),
+        onTap: gantiPin,
+      ),
       barisMenu(
         Icons.fingerprint,
-        'Biometric Authentication',
+        t('Autentikasi Biometrik', 'Biometric Authentication'),
         trailing: Switch(value: biometrik, onChanged: ubahBiometrik),
       ),
       barisMenu(
         Icons.security_outlined,
-        'Two-Factor Authentication',
-        teks: 'Off',
+        t('Autentikasi Dua Faktor', 'Two-Factor Authentication'),
+        teks: t('Email Terverifikasi', 'Email Verified'),
+        onTap: () => bukaInfoDialog(
+          t('Autentikasi Dua Faktor', 'Two-Factor Authentication'),
+          t(
+            'Akun MyBCA kamu terlindungi verifikasi email Firebase Auth dan Security PIN 6 digit.',
+            'Your MyBCA account is protected by Firebase Auth email verification and a 6-digit Security PIN.',
+          ),
+        ),
       ),
-      barisMenu(Icons.devices_outlined, 'Manage Devices'),
-      barisMenu(Icons.history, 'Login Activity'),
+      barisMenu(
+        Icons.devices_outlined,
+        t('Kelola Perangkat', 'Manage Devices'),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginActivityScreen()),
+        ),
+      ),
+      barisMenu(
+        Icons.history,
+        t('Aktivitas Login', 'Login Activity'),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginActivityScreen()),
+        ),
+      ),
     ]);
   }
 
   Widget bagianPengaturan() {
-    return kartu('Other Settings', [
+    final t = LocaleService.tr;
+    final isDark = ThemeService.mode.value == ThemeMode.dark;
+    return kartu(t('Pengaturan Lainnya', 'Other Settings'), [
       barisMenu(
         Icons.notifications_outlined,
-        'Notification Preferences',
+        t('Preferensi Notifikasi', 'Notification Preferences'),
         onTap: widget.onOpenNotifications,
       ),
       barisMenu(
         Icons.language,
-        'Language',
-        teks: 'Bahasa Indonesia',
+        t('Bahasa', 'Language'),
+        teks: LocaleService.language.value,
         onTap: widget.onOpenSettings,
       ),
       barisMenu(
         Icons.brightness_6_outlined,
-        'Dark Mode / Light Mode',
-        teks: 'Light',
+        t('Mode Gelap / Terang', 'Dark Mode / Light Mode'),
+        teks: isDark ? 'Dark' : 'Light',
         onTap: widget.onOpenSettings,
       ),
-      barisMenu(Icons.privacy_tip_outlined, 'Privacy Policy'),
-      barisMenu(Icons.description_outlined, 'Terms & Conditions'),
-      barisMenu(Icons.help_outline, 'Help Center'),
-      barisMenu(Icons.support_agent, 'Contact Support'),
+      barisMenu(
+        Icons.privacy_tip_outlined,
+        t('Kebijakan Privasi', 'Privacy Policy'),
+        onTap: () => bukaInfoDialog(
+          t('Kebijakan Privasi', 'Privacy Policy'),
+          t(
+            'Data pribadi dan transaksi kamu disimpan aman di Firebase untuk keperluan layanan perbankan digital MyBCA.',
+            'Your personal data and transactions are securely stored in Firebase for MyBCA digital banking services.',
+          ),
+        ),
+      ),
+      barisMenu(
+        Icons.description_outlined,
+        t('Syarat & Ketentuan', 'Terms & Conditions'),
+        onTap: () => bukaInfoDialog(
+          t('Syarat & Ketentuan', 'Terms & Conditions'),
+          t(
+            'Dengan menggunakan MyBCA, pengguna setuju menjaga kerahasiaan PIN dan keamanan perangkat masing-masing.',
+            'By using MyBCA, users agree to keep their PIN and device security confidential.',
+          ),
+        ),
+      ),
+      barisMenu(
+        Icons.help_outline,
+        t('Pusat Bantuan', 'Help Center'),
+        onTap: () => bukaInfoDialog(
+          t('Pusat Bantuan', 'Help Center'),
+          t(
+            'Butuh bantuan? Periksa menu Inbox atau gunakan fitur Lupa PIN di halaman Login jika terkendala akses akun.',
+            'Need help? Check your Inbox or use Forgot PIN on the Login screen if you have trouble accessing your account.',
+          ),
+        ),
+      ),
+      barisMenu(
+        Icons.support_agent,
+        t('Hubungi Dukungan', 'Contact Support'),
+        onTap: () => bukaInfoDialog(
+          t('Hubungi Dukungan', 'Contact Support'),
+          'Halo MyBCA Support\nEmail: support@mybca-demo.local\n24/7 Service.',
+        ),
+      ),
     ]);
   }
 
@@ -410,7 +562,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.biruMuda,
+      backgroundColor: AppColors.bg(context),
       body: SingleChildScrollView(
         child: Column(
           children: [

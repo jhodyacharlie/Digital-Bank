@@ -21,10 +21,8 @@ const List<String> kBankList = [
 class TransferPage extends StatefulWidget {
   const TransferPage({super.key, required this.userId, this.onSelectAccount});
 
-  /// ID dokumen user di koleksi `users` (contoh: "andi").
   final String userId;
 
-  /// Dipanggil saat rekening dipilih untuk memulai transfer.
   final void Function(SavedAccount account)? onSelectAccount;
 
   @override
@@ -101,7 +99,9 @@ class _TransferPageState extends State<TransferPage> {
       }
       if (existing == null) {
         await _service.add(widget.userId, result);
-        _snack('Referensi berhasil ditambahkan');
+        _snack('Rekening tersimpan, bisa dipakai lagi nanti');
+
+        _select(result);
       } else {
         await _service.update(widget.userId, result);
         _snack('Referensi berhasil diperbarui');
@@ -176,7 +176,6 @@ class _TransferPageState extends State<TransferPage> {
       ),
       body: Column(
         children: [
-          // Search bar
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: TextField(
@@ -211,7 +210,6 @@ class _TransferPageState extends State<TransferPage> {
             ),
           ),
 
-          // Tab kategori
           SizedBox(
             height: 44,
             child: ListView.separated(
@@ -241,7 +239,6 @@ class _TransferPageState extends State<TransferPage> {
             ),
           ),
 
-          // Tombol Tambah Referensi
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: SizedBox(
@@ -266,7 +263,6 @@ class _TransferPageState extends State<TransferPage> {
             ),
           ),
 
-          // Daftar rekening
           Expanded(
             child: StreamBuilder<List<SavedAccount>>(
               stream: _service.watch(widget.userId),
@@ -322,7 +318,6 @@ class _TransferPageState extends State<TransferPage> {
         ],
       ),
 
-      // Bottom navigation
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _navIndex,
         onTap: (i) => setState(() => _navIndex = i),
@@ -355,9 +350,6 @@ class _TransferPageState extends State<TransferPage> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Kartu rekening
-// ---------------------------------------------------------------------------
 class _AccountCard extends StatelessWidget {
   const _AccountCard({
     required this.account,
@@ -467,9 +459,6 @@ class _AccountCard extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Empty / error state
-// ---------------------------------------------------------------------------
 class _InfoState extends StatelessWidget {
   const _InfoState({
     required this.icon,
@@ -515,9 +504,6 @@ class _InfoState extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Form tambah / edit referensi
-// ---------------------------------------------------------------------------
 class _ReferenceForm extends StatefulWidget {
   const _ReferenceForm({this.existing});
   final SavedAccount? existing;
@@ -627,7 +613,7 @@ class _ReferenceFormState extends State<_ReferenceForm> {
                 items: kBankList
                     .map((b) => DropdownMenuItem(value: b, child: Text(b)))
                     .toList(),
-                // Bank & nomor rekening tidak diubah saat edit alias.
+
                 onChanged: _isEdit
                     ? null
                     : (v) => setState(() => _bank = v ?? _bank),

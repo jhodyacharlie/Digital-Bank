@@ -13,12 +13,10 @@ class OTPModel {
     this.isVerified = false,
   });
 
-  // Generate OTP 6 digit
   static String generateOTP() {
     return (100000 + Random().nextInt(900000)).toString();
   }
 
-  // Masa berlaku OTP: 3 menit
   bool get isExpired {
     return DateTime.now().difference(createdAt).inMinutes >= 3;
   }

@@ -1,4 +1,3 @@
-/// Rekening milik satu user.
 class Akun {
   const Akun({
     required this.id,

@@ -1,12 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Rekening tujuan yang disimpan (Daftar Transfer / Referensi).
-/// Path Firestore: users/{userId}/referensi/{id}
 class SavedAccount {
   final String id;
-  final String nama; // nama pemilik rekening
-  final String alias; // nama panggilan (opsional)
-  final String bank; // contoh: BCA, Mandiri, BNI
+  final String nama;
+  final String alias;
+  final String bank;
   final String noRekening;
   final bool favorit;
   final DateTime? createdAt;
@@ -23,7 +21,6 @@ class SavedAccount {
 
   bool get isBca => bank.toUpperCase() == 'BCA';
 
-  /// Nama yang ditampilkan: alias jika ada, jika tidak nama asli.
   String get displayName => alias.trim().isNotEmpty ? alias.trim() : nama;
 
   String get initials {
@@ -47,10 +44,10 @@ class SavedAccount {
   }
 
   Map<String, dynamic> toMap() => {
-        'nama': nama,
-        'alias': alias,
-        'bank': bank,
-        'noRekening': noRekening,
-        'favorit': favorit,
-      };
+    'nama': nama,
+    'alias': alias,
+    'bank': bank,
+    'noRekening': noRekening,
+    'favorit': favorit,
+  };
 }

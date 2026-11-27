@@ -1,86 +1,38 @@
-import 'dart:convert';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:crypto/crypto.dart';
 
-/// Operasi Firestore untuk pengaturan akun.
-///
-/// Dokumen: users/{userId}  (dokumen yang sama dengan UserService milik Charlie)
-///   nama, email, pin (sha256), password (sha256 "$userId:$password"), ...
-///   settings: { language, isDarkMode, notifTransaksi, notifPromo, notifInfo }
-///
-/// Preferensi disimpan di map `settings` supaya tidak bentrok dengan field
-/// milik fitur lain. Biometrik sengaja TIDAK di sini: itu pengaturan per
-/// perangkat, tetap di shared_preferences.
+import '../user_service.dart';
+
 class SettingService {
-  SettingService({FirebaseFirestore? firestore})
-      : _db = firestore ?? FirebaseFirestore.instance;
+  SettingService({FirebaseFirestore? firestore, UserService? users})
+    : _db = firestore ?? FirebaseFirestore.instance,
+      _users = users ?? UserService();
 
   final FirebaseFirestore _db;
+  final UserService _users;
 
-  DocumentReference<Map<String, dynamic>> _user(String userId) =>
-      _db.collection('users').doc(userId);
+  DocumentReference<Map<String, dynamic>> _user(String uid) =>
+      _db.collection('users').doc(uid);
 
-  // Sama persis dengan UserService.hashPin / SecurityService.hashPassword
-  // milik Charlie, agar PIN & password yang diubah di sini tetap valid saat login.
-  String _hash(String teks) => sha256.convert(utf8.encode(teks)).toString();
-  String _hashPin(String pin) => _hash(pin);
-  String _hashPassword(String userId, String password) =>
-      _hash('$userId:$password');
+  Future<Map<String, dynamic>?> getUser(String uid) async =>
+      (await _user(uid).get()).data();
 
-  /// null = pengguna tidak ada.
-  Future<Map<String, dynamic>?> getUser(String userId) async {
-    final snap = await _user(userId).get();
-    return snap.data();
-  }
+  Future<void> updateSettings(String uid, Map<String, dynamic> values) =>
+      _user(uid).update({
+        for (final entry in values.entries)
+          'settings.${entry.key}': entry.value,
+      });
 
-  /// Contoh: updateSettings(id, {'language': 'English'})
-  /// -> update field bertingkat settings.language
-  Future<void> updateSettings(String userId, Map<String, dynamic> values) {
-    return _user(userId).update({
-      for (final e in values.entries) 'settings.${e.key}': e.value,
-    });
-  }
+  Future<bool> cekPin(String uid, String pin) => _users.cekPin(uid, pin);
 
-  // ---------- PIN ----------
+  Future<void> ubahPin(String uid, String newPin, {required String oldPin}) =>
+      _users.changePin(uid, newPin, pinLama: oldPin);
 
-  Future<bool> cekPin(String userId, String pin) async {
-    final data = (await _user(userId).get()).data();
-    return data != null && data['pin'] == _hashPin(pin);
-  }
+  Future<void> ubahPassword(
+    String uid,
+    String oldPassword,
+    String newPassword,
+  ) => _users.changeAccountPassword(oldPassword, newPassword);
 
-  Future<void> ubahPin(String userId, String pinBaru) {
-    return _user(userId).update({'pin': _hashPin(pinBaru)});
-  }
-
-  // ---------- Password ----------
-
-  /// Akun yang belum punya password (mis. akun contoh) -> true untuk
-  /// password lama kosong, supaya bisa dibuatkan pertama kali.
-  Future<bool> cekPassword(String userId, String password) async {
-    final data = (await _user(userId).get()).data();
-    if (data == null) return false;
-    final tersimpan = data['password'];
-    if (tersimpan == null) return password.isEmpty;
-    return tersimpan == _hashPassword(userId, password);
-  }
-
-  Future<void> ubahPassword(String userId, String passwordBaru) {
-    return _user(userId).update({'password': _hashPassword(userId, passwordBaru)});
-  }
-
-  // ---------- Email ----------
-
-  Future<bool> emailDipakaiOrangLain(String userId, String email) async {
-    final hasil = await _db
-        .collection('users')
-        .where('email', isEqualTo: email)
-        .limit(2)
-        .get();
-    return hasil.docs.any((d) => d.id != userId);
-  }
-
-  Future<void> ubahEmail(String userId, String email) {
-    return _user(userId).update({'email': email});
-  }
+  Future<void> ubahEmail(String uid, String email) =>
+      _users.changeAccountEmail(email);
 }

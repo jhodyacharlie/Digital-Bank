@@ -19,6 +19,7 @@ class _ChangePinScreenState extends State<ChangePinScreen> {
   int langkah = 1;
   String pin = '';
   String pinBaru = '';
+  String pinLama = '';
   bool loading = false;
 
   String get judul {
@@ -53,10 +54,14 @@ class _ChangePinScreenState extends State<ChangePinScreen> {
         benar = false;
       }
       if (!mounted) return;
+      final pinTeruji = pin;
       setState(() {
         loading = false;
         pin = '';
-        if (benar) langkah = 2;
+        if (benar) {
+          pinLama = pinTeruji;
+          langkah = 2;
+        }
       });
       if (!benar) pesan('PIN lama salah');
       return;
@@ -84,7 +89,7 @@ class _ChangePinScreenState extends State<ChangePinScreen> {
     setState(() => loading = true);
     bool berhasil = true;
     try {
-      await userService.changePin(widget.user['id'], pin);
+      await userService.changePin(widget.user['id'], pin, pinLama: pinLama);
     } catch (e) {
       berhasil = false;
     }
@@ -102,7 +107,7 @@ class _ChangePinScreenState extends State<ChangePinScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.biruMuda,
+      backgroundColor: AppColors.bg(context),
       appBar: AppBar(
         backgroundColor: AppColors.biru,
         foregroundColor: Colors.white,

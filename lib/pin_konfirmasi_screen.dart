@@ -4,9 +4,6 @@ import 'app_style.dart';
 import 'pin_pad.dart';
 import 'transaksi_repository.dart';
 
-/// Meminta PIN sebelum uang dipindahkan.
-/// Hasil lewat Navigator.pop: true = PIN benar, false = salah 3 kali,
-/// null = user menekan kembali.
 class PinKonfirmasiScreen extends StatefulWidget {
   const PinKonfirmasiScreen({
     super.key,
@@ -61,7 +58,7 @@ class _PinKonfirmasiScreenState extends State<PinKonfirmasiScreen> {
     if (!mounted) return;
 
     if (benar) {
-      Navigator.pop(context, true);
+      Navigator.pop(context, pin);
       return;
     }
 

@@ -27,7 +27,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void initState() {
     super.initState();
     namaController = TextEditingController(text: widget.user['nama'] ?? '');
-    tglController = TextEditingController(text: widget.user['tglLahir'] ?? '');
+    final rawBirth = widget.user['tglLahir'];
+    String birthText = '';
+    if (rawBirth is int) {
+      final d = DateTime.fromMillisecondsSinceEpoch(rawBirth);
+      birthText =
+          '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+    } else if (rawBirth is String) {
+      birthText = rawBirth;
+    }
+    tglController = TextEditingController(text: birthText);
     alamatController = TextEditingController(text: widget.user['alamat'] ?? '');
     negaraController = TextEditingController(
       text: widget.user['kewarganegaraan'] ?? 'Indonesia',
@@ -80,16 +89,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     setState(() => loading = true);
     bool berhasil = true;
+    String? error;
     try {
       await userService.updateProfil(widget.user['id'], data);
     } catch (e) {
       berhasil = false;
+      error = e.toString();
     }
     if (!mounted) return;
     setState(() => loading = false);
 
     if (!berhasil) {
-      pesan('Gagal menyimpan profil');
+      pesan(
+        'Gagal menyimpan profil: ${error ?? 'Periksa koneksi dan izin Firebase'}',
+      );
       return;
     }
     Navigator.pop(context, data);
@@ -98,7 +111,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.biruMuda,
+      backgroundColor: AppColors.bg(context),
       appBar: AppBar(
         backgroundColor: AppColors.biru,
         foregroundColor: Colors.white,
@@ -151,7 +164,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             const SizedBox(height: 12),
             const Text(
-              'Email dan nomor telepon tidak bisa diubah di versi demo.',
+              'Email diubah lewat menu Pengaturan Akun. Nomor telepon belum '
+              'bisa diubah sendiri di aplikasi ini.',
               style: TextStyle(color: AppColors.abu, fontSize: 12),
             ),
             const SizedBox(height: 24),

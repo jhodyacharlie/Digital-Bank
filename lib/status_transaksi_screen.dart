@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 
 import 'app_style.dart';
+import 'history_page.dart';
 import 'riwayat_transaksi.dart';
 import 'struk_screen.dart';
 import 'transaksi_repository.dart';
 
-/// Daftar transaksi realtime: uang yang sudah terkirim, diterima, atau gagal.
-/// Uang masuk dari user lain muncul sendiri tanpa perlu refresh.
 class StatusTransaksiScreen extends StatefulWidget {
   const StatusTransaksiScreen({
     super.key,
@@ -82,8 +81,9 @@ class _StatusTransaksiScreenState extends State<StatusTransaksiScreen> {
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.card(context),
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border(context)),
         ),
         child: Row(
           children: [
@@ -150,11 +150,21 @@ class _StatusTransaksiScreenState extends State<StatusTransaksiScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.biruMuda,
+      backgroundColor: AppColors.bg(context),
       appBar: AppBar(
         backgroundColor: AppColors.biru,
         foregroundColor: Colors.white,
         title: const Text('Status Transaksi'),
+        actions: [
+          IconButton(
+            tooltip: 'Riwayat transaksi lengkap',
+            icon: const Icon(Icons.history_rounded),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const HistoryPage()),
+            ),
+          ),
+        ],
       ),
       body: Column(
         children: [

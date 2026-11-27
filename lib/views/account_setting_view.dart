@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 
 import '../controllers/setting_controller.dart';
 import '../login_screen.dart';
+import '../login_activity_screen.dart';
+
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AccountSettingView extends StatelessWidget {
   const AccountSettingView({super.key});
@@ -25,8 +28,21 @@ class AccountSettingView extends StatelessWidget {
           _menu(context, 'Ubah Password', () => _ubahPassword(context, c)),
           _menu(context, 'Ubah PIN', () => _ubahPin(context, c)),
           _menu(context, 'Ubah Email', () => _ubahEmail(context, c)),
+          _menu(
+            context,
+            'Login Activity',
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const LoginActivityScreen()),
+            ),
+          ),
+          _menu(
+            context,
+            'Manage Devices / Perangkat ini',
+            () => _manageDevices(context),
+          ),
+          _menu(context, 'Verifikasi Email', () => _emailVerification(context)),
 
-          // Baris biometrik dengan switch (seperti sorotan di Gambar 1)
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             decoration: BoxDecoration(
@@ -63,6 +79,47 @@ class AccountSettingView extends StatelessWidget {
     );
   }
 
+  Future<void> _manageDevices(BuildContext context) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginActivityScreen()),
+    );
+  }
+
+  Future<void> _emailVerification(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    try {
+      await user.reload();
+      final current = FirebaseAuth.instance.currentUser;
+      if (current?.emailVerified == true) {
+        if (context.mounted)
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Email akun sudah terverifikasi. Email verification aktif.',
+              ),
+            ),
+          );
+      } else {
+        await current?.sendEmailVerification();
+        if (context.mounted)
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Link verifikasi email telah dikirim. Buka inbox untuk menyelesaikan verifikasi.',
+              ),
+            ),
+          );
+      }
+    } catch (e) {
+      if (context.mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memproses verifikasi email: $e')),
+        );
+    }
+  }
+
   Widget _judul(String t) => Padding(
     padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
     child: Text(
@@ -88,7 +145,6 @@ class AccountSettingView extends StatelessWidget {
     );
   }
 
-  // ---------- Dialog Input (dipakai berulang) ----------
   Future<void> _dialogInput({
     required BuildContext context,
     required String title,
@@ -152,6 +208,9 @@ class AccountSettingView extends StatelessWidget {
         ),
       ),
     );
+    for (final c in ctrls) {
+      c.dispose();
+    }
   }
 
   void _ubahPassword(BuildContext context, SettingController c) => _dialogInput(
@@ -186,12 +245,12 @@ class AccountSettingView extends StatelessWidget {
   void _keluar(BuildContext context, SettingController c) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: const Text('Keluar'),
         content: const Text('Yakin ingin keluar dari akun ini?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogCtx),
             child: const Text('Batal'),
           ),
           TextButton(

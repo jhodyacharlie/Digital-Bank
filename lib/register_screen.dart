@@ -89,7 +89,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => loading = true);
 
     try {
-      final dataUser = await userService.register(
+      final pengguna = await userService.register(
         namaDepan: namaDepanController.text,
         namaBelakang: namaBelakangController.text,
         email: emailController.text,
@@ -101,28 +101,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (!mounted) return;
-      final userId = dataUser['id'] as String?;
-      final email = dataUser['email'] as String?;
-
-      if (userId == null || email == null) {
-        pesan('Data akun tidak lengkap.');
-        return;
-      }
-
       await Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => OTPView(email: email, userId: userId),
-        ),
+        MaterialPageRoute(builder: (_) => OTPView(profile: pengguna)),
       );
     } on RegisterException catch (e) {
       pesan(e.pesan);
     } on FirebaseException catch (e) {
       debugPrint('Firebase registration error ${e.code}: ${e.message}');
       pesan('Pendaftaran gagal (Firebase: ${e.code}).');
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('Registration error: $e');
-      pesan('Pendaftaran gagal. Periksa koneksi dan konfigurasi Firebase.');
+      debugPrintStack(stackTrace: stackTrace);
+      pesan('Pendaftaran gagal: $e');
     } finally {
       if (mounted) {
         setState(() => loading = false);
@@ -134,18 +125,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return InputDecoration(
       labelText: label,
       hintText: hint,
-      prefixIcon: ikon == null ? null : Icon(ikon, color: AppColors.biru),
+      prefixIcon: ikon == null
+          ? null
+          : Icon(ikon, color: AppColors.accent(context)),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: AppColors.card(context),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFFDDE3EA)),
+        borderSide: BorderSide(color: AppColors.border(context)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.biru, width: 1.5),
+        borderSide: BorderSide(color: AppColors.accent(context), width: 1.5),
       ),
     );
   }
@@ -187,7 +180,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           Text(
             judul,
             style: TextStyle(
-              color: AppColors.biruTua,
+              color: AppColors.textPrimary(context),
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
@@ -195,7 +188,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SizedBox(height: 4),
           Text(
             deskripsi,
-            style: const TextStyle(color: AppColors.abu, fontSize: 12),
+            style: TextStyle(
+              color: AppColors.textSecondary(context),
+              fontSize: 12,
+            ),
           ),
         ],
       ),
@@ -207,9 +203,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card(context),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFDDE3EA)),
+        border: Border.all(color: AppColors.border(context)),
       ),
       child: child,
     );
@@ -218,10 +214,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.biruMuda,
+      backgroundColor: AppColors.bg(context),
       appBar: AppBar(
-        backgroundColor: AppColors.biruMuda,
-        foregroundColor: AppColors.biruTua,
+        backgroundColor: AppColors.bg(context),
+        foregroundColor: AppColors.textPrimary(context),
         elevation: 0,
         title: const Text(
           'Create Account',
@@ -251,7 +247,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.biruTua,
+                    color: AppColors.textPrimary(context),
                   ),
                 ),
                 const SizedBox(height: 6),

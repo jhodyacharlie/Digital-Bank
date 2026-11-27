@@ -1,19 +1,9 @@
-// CONTOH menyambungkan fitur ini ke Firestore (struktur app Digeboy):
-//
-//   users/{id}                 -> nama, rekening, saldo, pin (SHA-256)
-//   users/{id}/mutasi/{trxId}  -> catatan transaksi (satu di pengirim, satu di penerima)
-//
-// Transaksi menggunakan satu operasi Firestore agar perubahan saldo, mutasi,
-// dan notifikasi kedua akun tersimpan sebagai satu kesatuan.
-
-import 'dart:convert';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:crypto/crypto.dart';
 
 import 'akun.dart';
 import 'riwayat_transaksi.dart';
 import 'transaksi_repository.dart';
+import 'user_service.dart';
 
 class FirestoreTransaksiRepository implements TransaksiRepository {
   FirestoreTransaksiRepository({FirebaseFirestore? firestore})
@@ -27,9 +17,6 @@ class FirestoreTransaksiRepository implements TransaksiRepository {
   CollectionReference<Map<String, dynamic>> _mutasi(String id) =>
       _user(id).collection('mutasi');
 
-  CollectionReference<Map<String, dynamic>> _notifikasi(String id) =>
-      _user(id).collection('notifications');
-
   Akun _akunDari(DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data() ?? {};
     return Akun(
@@ -38,20 +25,6 @@ class FirestoreTransaksiRepository implements TransaksiRepository {
       rekening: (d['rekening'] ?? '-') as String,
       saldo: (d['saldo'] as num?)?.toInt() ?? 0,
     );
-  }
-
-  Map<String, dynamic> _keMap(RiwayatTransaksi t) {
-    return {
-      'idTransaksi': t.id,
-      'tanggal': Timestamp.fromDate(t.tanggal),
-      'tipe': t.tipe,
-      'nominal': t.nominal,
-      'nama': t.nama,
-      'berita': t.berita,
-      'status': t.status,
-      'jenis': t.jenis,
-      'rekeningLawan': t.rekeningLawan,
-    };
   }
 
   RiwayatTransaksi _dariDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -76,20 +49,19 @@ class FirestoreTransaksiRepository implements TransaksiRepository {
 
   @override
   Future<Akun?> cariByRekening(String rekening) async {
-    final hasil = await _db
-        .collection('users')
-        .where('rekening', isEqualTo: rekening)
-        .limit(1)
-        .get();
-    if (hasil.docs.isEmpty) return null;
-    return _akunDari(hasil.docs.first);
+    final hasil = await UserService().findByRekening(rekening);
+    if (hasil == null) return null;
+    return Akun(
+      id: hasil['id'],
+      nama: hasil['nama'] ?? '-',
+      rekening: hasil['rekening'] ?? '-',
+      saldo: 0,
+    );
   }
 
   @override
   Future<bool> cekPin(String userId, String pin) async {
-    final doc = await _user(userId).get();
-    final hash = sha256.convert(utf8.encode(pin)).toString();
-    return doc.data()?['pin'] == hash;
+    return UserService().cekPin(userId, pin);
   }
 
   @override
@@ -97,105 +69,36 @@ class FirestoreTransaksiRepository implements TransaksiRepository {
     required String dariId,
     required String keId,
     required int nominal,
+    required String pin,
+    required String rekeningTujuan,
     String berita = '',
     String jenis = 'Pembayaran',
   }) async {
-    if (nominal <= 0) {
-      return const HasilBayar.gagal('Nominal harus lebih dari 0');
-    }
-    if (dariId == keId) {
-      return const HasilBayar.gagal('Tidak bisa membayar ke rekening sendiri');
-    }
-
-    final mutasiPengirim = _mutasi(dariId).doc();
-    final id = 'TRX${mutasiPengirim.id}';
-    final tanggal = DateTime.now();
-
-    RiwayatTransaksi? struk;
-    RiwayatTransaksi? gagal;
-
-    String? error;
     try {
-      error = await _db.runTransaction<String?>((trx) async {
-        final dariRef = _user(dariId);
-        final keRef = _user(keId);
-
-        // Di Firestore semua pembacaan harus sebelum penulisan.
-        final dari = await trx.get(dariRef);
-        final ke = await trx.get(keRef);
-        if (!dari.exists || !ke.exists) return 'Rekening tidak ditemukan';
-
-        final a = _akunDari(dari);
-        final b = _akunDari(ke);
-
-        RiwayatTransaksi sisiPengirim(String status) => RiwayatTransaksi(
-          id: id,
-          tanggal: tanggal,
-          tipe: 'debit',
-          nominal: nominal,
-          nama: b.nama,
-          berita: berita,
-          status: status,
-          jenis: jenis,
-          rekeningLawan: b.rekening,
-        );
-
-        if (a.saldo < nominal) {
-          gagal = sisiPengirim('Gagal');
-          return 'Saldo tidak cukup';
-        }
-
-        final sisiPenerima = RiwayatTransaksi(
-          id: id,
-          tanggal: tanggal,
-          tipe: 'kredit',
-          nominal: nominal,
-          nama: a.nama,
-          berita: berita,
-          status: 'Berhasil',
-          jenis: jenis,
-          rekeningLawan: a.rekening,
-        );
-        struk = sisiPengirim('Berhasil');
-        final notifikasiPengirim = _notifikasi(dariId).doc();
-        final notifikasiPenerima = _notifikasi(keId).doc();
-
-        trx.update(dariRef, {'saldo': a.saldo - nominal});
-        trx.update(keRef, {'saldo': b.saldo + nominal});
-        trx.set(mutasiPengirim, _keMap(struk!));
-        trx.set(_mutasi(keId).doc(id), _keMap(sisiPenerima));
-        trx.set(notifikasiPengirim, {
-          'title': '$jenis Berhasil',
-          'message': '$jenis ${rupiahTeks(nominal)} ke ${b.nama} berhasil.',
-          'type': 'transaksi',
-          'isRead': false,
-          'tanggal': FieldValue.serverTimestamp(),
-        });
-        trx.set(notifikasiPenerima, {
-          'title': 'Dana Diterima',
-          'message': 'Anda menerima ${rupiahTeks(nominal)} dari ${a.nama}.',
-          'type': 'transaksi',
-          'isRead': false,
-          'tanggal': FieldValue.serverTimestamp(),
-        });
-        return null;
-      });
+      final result = await UserService().bayar(
+        dariId,
+        keId,
+        nominal,
+        pin: pin,
+        rekeningTujuan: rekeningTujuan,
+        berita: berita,
+        jenis: jenis,
+      );
+      final struk = RiwayatTransaksi(
+        id: result['id'] as String,
+        tanggal: DateTime.now(),
+        tipe: 'debit',
+        nominal: nominal,
+        nama: (result['nama'] ?? '-') as String,
+        berita: berita,
+        status: 'Berhasil',
+        jenis: jenis,
+        rekeningLawan: (result['rekeningLawan'] ?? '-') as String,
+      );
+      return HasilBayar.berhasil(struk);
     } catch (e) {
-      return const HasilBayar.gagal('Gagal terhubung ke server');
+      return HasilBayar.gagal(e.toString().replaceFirst('Exception: ', ''));
     }
-
-    if (error == null) return HasilBayar.berhasil(struk!);
-
-    final catatanGagal = gagal;
-    if (catatanGagal == null) return HasilBayar.gagal(error);
-
-    // Ditolak: catat 'Gagal' di riwayat pengirim saja.
-    try {
-      await _mutasi(dariId).doc(id).set(_keMap(catatanGagal));
-    } catch (e) {
-      return HasilBayar.gagal(error);
-    }
-    return HasilBayar.gagal(error, struk: catatanGagal);
   }
 
   @override
